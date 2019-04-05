@@ -1,0 +1,12 @@
+[target.thumbv7em-none-eabihf]
+rustflags = ["-C", "link-arg=-Tlink.ld"]
+
+[target.thumbv7m-none-eabi]
+rustflags = [
+    "-C", "link-arg=-Tlink.ld",
+    "-C", "link-arg=-Tlog.ld",
+]
+runner = "qemu-system-arm -cpu cortex-m3 -machine lm3s6965evb -nographic -semihosting-config enable=on,target=native -kernel"
+
+[build]
+target = "thumbv7m-none-eabi"

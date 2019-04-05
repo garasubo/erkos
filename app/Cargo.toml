@@ -1,0 +1,10 @@
+[package]
+name = "app"
+version = "0.1.0"
+authors = ["garasubo <garasubo@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+rt = { path = "../rt" }
+log = { path = "../log" }
+cortex-m-semihosting = "0.3.2"
