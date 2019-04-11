@@ -1,5 +1,7 @@
 #![no_std]
+#![feature(asm)]
 
+use cortex_m_semihosting::debug;
 use core::panic::PanicInfo;
 use core::ptr;
 
@@ -58,7 +60,6 @@ extern "C" {
     fn MemManage();
     fn BusFault();
     fn UsageFault();
-    fn SVCall();
     fn PendSV();
     fn SysTick();
 }
@@ -82,7 +83,40 @@ pub static EXCEPTIONS: [Vector; 14] = [
     Vector { handler: SysTick },
 ];
 
+#[cfg(not(debug_assertions))]
 #[no_mangle]
 pub extern "C" fn DefaultExceptionHandler() {
     loop {}
+}
+
+#[cfg(debug_assertions)]
+#[no_mangle]
+pub extern "C" fn DefaultExceptionHandler() {
+    debug::exit(debug::EXIT_SUCCESS);
+    loop {}
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn SVCall() {
+    asm!(
+        "
+        cmp lr, #0xfffffff9
+        bne to_kernel
+
+        /* switch thread mode to unprivileged */
+        mov r0, #1
+        msr CONTROL, r0
+
+        movw lr, #0xfffd
+        movt lr, #0xffff
+        bx lr
+    
+      to_kernel:
+        mov r0, #0
+        msr CONTROL, r0
+        movw lr, #0xfff9
+        movt lr, #0xffff
+        bx lr
+        "
+    ::::"volatile");
 }

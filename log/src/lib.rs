@@ -34,3 +34,25 @@ macro_rules! debug {
 macro_rules! debug {
     ($logger:expr, $string:expr) => {{  }};
 }
+
+#[cfg(debug_assertions)]
+#[macro_export]
+macro_rules! dhprintln {
+    () => {
+        cortex_m_semihosting::hprintln!("\n").unwrap()
+    };
+    ($s:expr) => {
+        cortex_m_semihosting::hprintln!($s).unwrap()
+    };
+    ($s:expr, $($tt:tt)*) => {
+        cortex_m_semihosting::hprintln!($s, $($tt)*).unwrap()
+    };
+}
+
+#[cfg(not(debug_assertions))]
+#[macro_export]
+macro_rules! dhprintln {
+    () => {};
+    ($s:expr) => {};
+    ($s:expr, $($tt:tt)*) => {};
+}
