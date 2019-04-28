@@ -6,11 +6,8 @@ use rt::entry;
 use cortex_m_semihosting::{debug, hio::{self, HStdout}};
 use log::{debug, Log, dhprintln};
 use core::slice::from_raw_parts_mut;
-pub mod serial;
-pub mod gpio;
-pub mod rcc;
-use rcc::{Rcc, RCC};
-use serial::Serial;
+use device::rcc::{Rcc, RCC};
+use device::serial::Serial;
 use embedded_hal::serial::Write;
 
 struct Logger {

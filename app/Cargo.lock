@@ -10,11 +10,11 @@ name = "app"
 version = "0.1.0"
 dependencies = [
  "cortex-m-semihosting 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "device 0.1.0",
  "embedded-hal 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.1.0",
  "nb 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rt 0.1.0",
- "vcell 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -41,6 +41,15 @@ version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "cortex-m 0.5.8 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "device"
+version = "0.1.0"
+dependencies = [
+ "embedded-hal 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "nb 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "vcell 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
