@@ -6,6 +6,12 @@ use rt::entry;
 use cortex_m_semihosting::{debug, hio::{self, HStdout}};
 use log::{debug, Log, dhprintln};
 use core::slice::from_raw_parts_mut;
+pub mod serial;
+pub mod gpio;
+pub mod rcc;
+use rcc::{Rcc, RCC};
+use serial::Serial;
+use embedded_hal::serial::Write;
 
 struct Logger {
     hstdout: HStdout,
@@ -28,12 +34,13 @@ macro_rules! stack_allocate {
     }};
 }
 
-struct Process {
+struct Process<'a> {
     sp: *mut u8,
+    regs: &'a [u32; 8],
 }
 
-impl Process {
-    fn create(entry: u32, sp: u32) -> Process {
+impl<'a> Process<'a> {
+    fn create(entry: u32, sp: u32, regs: &'a [u32; 8]) -> Process {
         let base_frame_ptr = (sp - 0x20) as *mut u32;
         let base_frame = unsafe { from_raw_parts_mut(base_frame_ptr, 8) };
         base_frame[0] = 0; // r0
@@ -46,6 +53,7 @@ impl Process {
         base_frame[7] = 0x01000000; // xpsr, set thumb state
         Process {
             sp: base_frame_ptr as *mut u8,
+            regs: regs,
         }
     }
 }
@@ -80,19 +88,34 @@ pub fn main() -> ! {
 
 
     let address = stack_allocate!();
+    let regs = [0u32; 8];
 
     //logger.log(address as u8);
     
-    let process = Process::create(app_main as u32, address);
-    unsafe {
-        asm!(
-            "
-            msr psp, $0
-            svc 0
-            "
-            :: "{r0}"(process.sp)
-            :"r4","r5","r6","r7","r8","r9","r10","r11":"volatile"
-        );
+    let mut process = Process::create(app_main as u32, address, &regs);
+    let registers = RCC.get_registers_ref();
+
+    registers.apb1enr.set(1 << 18);
+    registers.ahb1enr.set(1 << 3);
+
+    let mut serial = Serial::usart3();
+    for c in "hello world".chars() {
+        serial.write(c);
+    }
+    loop {
+        unsafe {
+            asm!(
+                "
+                msr psp, $0
+                ldmia $2, {r4-r11}
+                svc 0
+                stmia $2, {r4-r11}
+                mrs $0, psp
+                "
+                :"={r0}"(process.sp): "{r0}"(process.sp),"{r1}"(process.regs)
+                :"r4","r5","r6","r7","r8","r9","r10","r11":"volatile"
+            );
+        }
     }
 
     // debug!(logger, "Goodbye");
