@@ -20,6 +20,7 @@ SECTIONS
     /* Second entry: reset vector */
     KEEP(*(.vector_table.reset_vector));
     KEEP(*(.vector_table.exceptions));
+    KEEP(*(.vector_table.irqs));
   } > FLASH
 
   .text :

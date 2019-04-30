@@ -3,12 +3,16 @@
 #![feature(asm)]
 
 use rt::entry;
+use rt::Vector;
 use cortex_m_semihosting::{debug, hio::{self, HStdout}};
 use log::{debug, Log, dhprintln};
 use core::slice::from_raw_parts_mut;
 use device::rcc::{Rcc, RCC};
 use device::serial::Serial;
-use embedded_hal::serial::Write;
+use device::irqs::IrqId;
+use device::IRQS;
+use device::nvic::Nvic;
+use embedded_hal::serial::{Read, Write};
 
 struct Logger {
     hstdout: HStdout,
@@ -96,9 +100,13 @@ pub fn main() -> ! {
     registers.ahb1enr.set(1 << 3);
 
     let mut serial = Serial::usart3();
+    let nvic = Nvic::new();
+    nvic.enable(IrqId::USART3 as u32);
     for c in "hello world".chars() {
         serial.write(c);
     }
+    // Dummy code to prevent optimizing
+    unsafe { IRQS[0] = Vector { reserved: 0 }; }
     loop {
         unsafe {
             asm!(
@@ -112,6 +120,12 @@ pub fn main() -> ! {
                 :"={r0}"(process.sp): "{r0}"(process.sp),"{r1}"(process.regs)
                 :"r4","r5","r6","r7","r8","r9","r10","r11":"volatile"
             );
+        }
+
+        if (nvic.is_pending(IrqId::USART3 as u32)) {
+            serial.read().map(|c| serial.write(c));
+            nvic.clear_pending(IrqId::USART3 as u32);
+            nvic.enable(IrqId::USART3 as u32);
         }
     }
 

@@ -8,3 +8,5 @@ edition = "2018"
 vcell = "0.1.0"
 embedded-hal = "0.2.2"
 nb = "0.1.2"
+rt = { path = "../rt" }
+volatile-register = "0.2.0"

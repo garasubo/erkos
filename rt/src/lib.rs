@@ -50,8 +50,8 @@ macro_rules! entry {
 }
 
 pub union Vector {
-    reserved: u32,
-    handler: unsafe extern "C" fn(),
+    pub reserved: u32,
+    pub handler: unsafe extern "C" fn(),
 }
 
 extern "C" {
@@ -104,16 +104,11 @@ pub unsafe extern "C" fn SVCall() {
         bne to_kernel
 
         /* switch thread mode to unprivileged */
-        mov r0, #1
-        msr CONTROL, r0
-
         movw lr, #0xfffd
         movt lr, #0xffff
         bx lr
     
       to_kernel:
-        mov r0, #0
-        msr CONTROL, r0
         movw lr, #0xfff9
         movt lr, #0xffff
         bx lr
