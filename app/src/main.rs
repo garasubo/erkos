@@ -7,7 +7,6 @@ use rt::Vector;
 use rt::SYSCALL_FIRED;
 use cortex_m_semihosting::{debug, hio::{self, HStdout}};
 use log::{debug, Log, dhprintln};
-use core::slice::from_raw_parts_mut;
 use core::slice::from_raw_parts;
 use device::rcc::{Rcc, RCC};
 use device::serial::Serial;
@@ -15,6 +14,8 @@ use device::irqs::IrqId;
 use device::IRQS;
 use device::nvic::Nvic;
 use embedded_hal::serial::{Read, Write};
+use kernel::process_create;
+use kernel::process::Process;
 
 struct Logger {
     hstdout: HStdout,
@@ -25,48 +26,6 @@ impl Log for Logger {
 
     fn log(&mut self, address: u8) -> Result<(), ()> {
         self.hstdout.write_all(&[address])
-    }
-}
-
-macro_rules! stack_allocate {
-    ($n:expr) => {{
-        #[link_section = ".uninit"]
-        static mut STACK: [u8; $n] = [0; $n];
-
-        unsafe { &STACK[0] as *const u8 as u32 + $n }
-    }};
-}
-
-macro_rules! reg_allocate {
-    () => {{
-        #[link_section = ".uninit"]
-        static mut REGS: [u32; 8] = [0; 8];
-
-        unsafe { REGS }
-    }};
-}
-
-struct Process<'a> {
-    sp: *mut u8,
-    regs: &'a [u32; 8],
-}
-
-impl<'a> Process<'a> {
-    fn create(entry: u32, sp: u32, regs: &'a [u32; 8]) -> Process {
-        let base_frame_ptr = (sp - 0x20) as *mut u32;
-        let base_frame = unsafe { from_raw_parts_mut(base_frame_ptr, 8) };
-        base_frame[0] = 0; // r0
-        base_frame[1] = 2; // r1
-        base_frame[2] = 0; // r2
-        base_frame[3] = 0; // r3
-        base_frame[4] = 0; // r12
-        base_frame[5] = 0; // lr(r14)
-        base_frame[6] = entry; // return address
-        base_frame[7] = 0x01000000; // xpsr, set thumb state
-        Process {
-            sp: base_frame_ptr as *mut u8,
-            regs: regs,
-        }
     }
 }
 
@@ -99,12 +58,9 @@ pub fn main() -> ! {
     //dhprintln!("hello");
 
 
-    let address = stack_allocate!(1024);
-    let regs = reg_allocate!();
-
     //logger.log(address as u8);
     
-    let mut process = Process::create(app_main as u32, address, &regs);
+    let mut process = process_create!(app_main, 1024);
     let registers = RCC.get_registers_ref();
 
     registers.apb1enr.set(1 << 18);
@@ -137,7 +93,7 @@ pub fn main() -> ! {
         process.sp = sp;
         unsafe {
             if SYSCALL_FIRED > 0 {
-                let base_frame = unsafe { from_raw_parts_mut(process.sp as *mut u32, 8) };
+                let base_frame = from_raw_parts(process.sp as *const u32, 8);
                 let svc_id = base_frame[0];
                 if svc_id == 1 {
                     let arg2 = base_frame[2] as usize;

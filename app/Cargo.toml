@@ -8,8 +8,6 @@ edition = "2018"
 device = { path = "../device" }
 rt = { path = "../rt" }
 log = { path = "../log" }
+kernel = { path = "../kernel" }
 cortex-m-semihosting = "0.3.2"
 embedded-hal = "0.2.2"
-[dependencies.cortex-m]
-version = "0.6.0"
-features = ["inline-asm"]
