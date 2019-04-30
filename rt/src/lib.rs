@@ -97,6 +97,10 @@ pub extern "C" fn DefaultExceptionHandler() {
 }
 
 #[no_mangle]
+#[used]
+pub static mut SYSCALL_FIRED: usize = 0;
+
+#[no_mangle]
 pub unsafe extern "C" fn SVCall() {
     asm!(
         "
@@ -109,6 +113,10 @@ pub unsafe extern "C" fn SVCall() {
         bx lr
     
       to_kernel:
+        ldr r0, =SYSCALL_FIRED
+        mov r1, #1
+        str r1, [r0, #0]
+
         movw lr, #0xfff9
         movt lr, #0xffff
         bx lr

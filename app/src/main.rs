@@ -4,9 +4,11 @@
 
 use rt::entry;
 use rt::Vector;
+use rt::SYSCALL_FIRED;
 use cortex_m_semihosting::{debug, hio::{self, HStdout}};
 use log::{debug, Log, dhprintln};
 use core::slice::from_raw_parts_mut;
+use core::slice::from_raw_parts;
 use device::rcc::{Rcc, RCC};
 use device::serial::Serial;
 use device::irqs::IrqId;
@@ -27,11 +29,20 @@ impl Log for Logger {
 }
 
 macro_rules! stack_allocate {
+    ($n:expr) => {{
+        #[link_section = ".uninit"]
+        static mut STACK: [u8; $n] = [0; $n];
+
+        unsafe { &STACK[0] as *const u8 as u32 + $n }
+    }};
+}
+
+macro_rules! reg_allocate {
     () => {{
         #[link_section = ".uninit"]
-        static mut STACK: [u8; 1024] = [0; 1024];
+        static mut REGS: [u32; 8] = [0; 8];
 
-        unsafe { &STACK[0] as *const u8 as u32 + 1024 }
+        unsafe { REGS }
     }};
 }
 
@@ -88,8 +99,8 @@ pub fn main() -> ! {
     //dhprintln!("hello");
 
 
-    let address = stack_allocate!();
-    let regs = [0u32; 8];
+    let address = stack_allocate!(1024);
+    let regs = reg_allocate!();
 
     //logger.log(address as u8);
     
@@ -108,6 +119,8 @@ pub fn main() -> ! {
     // Dummy code to prevent optimizing
     unsafe { IRQS[0] = Vector { reserved: 0 }; }
     loop {
+        let mut sp = process.sp;
+        let regs = process.regs;
         unsafe {
             asm!(
                 "
@@ -117,9 +130,26 @@ pub fn main() -> ! {
                 stmia $2, {r4-r11}
                 mrs $0, psp
                 "
-                :"={r0}"(process.sp): "{r0}"(process.sp),"{r1}"(process.regs)
+                :"={r0}"(sp): "{r0}"(sp),"{r1}"(regs)
                 :"r4","r5","r6","r7","r8","r9","r10","r11":"volatile"
             );
+        }
+        process.sp = sp;
+        unsafe {
+            if SYSCALL_FIRED > 0 {
+                let base_frame = unsafe { from_raw_parts_mut(process.sp as *mut u32, 8) };
+                let svc_id = base_frame[0];
+                if svc_id == 1 {
+                    let arg2 = base_frame[2] as usize;
+                    let arg1 = from_raw_parts(base_frame[1] as *const u8, arg2);
+
+                    for i in 0..arg2 {
+                        serial.write(arg1[i] as char);
+                    }
+                }
+            }
+
+            SYSCALL_FIRED = 0;
         }
 
         if (nvic.is_pending(IrqId::USART3 as u32)) {
@@ -139,7 +169,15 @@ pub fn main() -> ! {
 
 #[no_mangle]
 pub unsafe extern "C" fn app_main(_r0: usize, _r1: usize, _r2: usize) -> ! {
-    asm!("svc 1"::::"volatile");
+    let message: &str = "app_main";
+    let message_ptr = message.as_ptr();
+    let length = message.bytes().len();
+    asm!(
+        "
+        mov r0, #1
+        svc 1
+        "
+    ::"{r1}"(message_ptr), "{r2}"(length)::"volatile");
     loop {}
 }
 
