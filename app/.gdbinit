@@ -1,3 +1,6 @@
+target remote :3333
+load
+
 define armex
 
   printf "EXEC_RETURN (LR):\n",

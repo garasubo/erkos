@@ -22,4 +22,23 @@ impl<'a> Process<'a> {
             regs: regs,
         }
     }
+
+    pub fn execute(&mut self) {
+        let mut sp = self.sp;
+        let regs = self.regs;
+        unsafe {
+            asm!(
+                "
+                msr psp, $0
+                ldmia $2, {r4-r11}
+                svc 0
+                stmia $2, {r4-r11}
+                mrs $0, psp
+                "
+                :"={r0}"(sp): "{r0}"(sp),"{r1}"(regs)
+                :"r4","r5","r6","r7","r8","r9","r10","r11":"volatile"
+            );
+        }
+        self.sp = sp;
+    }
 }

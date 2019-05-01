@@ -1,5 +1,6 @@
 extern crate embedded_hal as hal;
 use vcell::VolatileCell;
+use volatile_register::RW;
 
 use crate::gpio::Gpio;
 
@@ -15,13 +16,13 @@ pub struct Usart {
 
 #[repr(C)]
 pub struct UsartRegisters {
-    sr: VolatileCell<u32>,
-    dr: VolatileCell<u32>,
-    brr: VolatileCell<u32>,
-    cr1: VolatileCell<u32>,
-    cr2: VolatileCell<u32>,
-    cr3: VolatileCell<u32>,
-    gtpr: VolatileCell<u32>,
+    sr: RW<u32>,
+    dr: RW<u32>,
+    brr: RW<u32>,
+    cr1: RW<u32>,
+    cr2: RW<u32>,
+    cr3: RW<u32>,
+    gtpr: RW<u32>,
 }
 
 impl Usart {
@@ -40,9 +41,9 @@ impl hal::serial::Read<char> for Serial<Usart> {
     fn read(&mut self) -> nb::Result<char, Error> {
         let registers = self.usart.get_registers_ref();
 
-        while (registers.sr.get() & (1 << 5)) == 0 { 
+        while (registers.sr.read() & (1 << 5)) == 0 { 
         }
-        let c = registers.dr.get() as u8 as char;
+        let c = registers.dr.read() as u8 as char;
         if c == '\r' {
             Ok('\n')
         } else {
@@ -57,17 +58,21 @@ impl hal::serial::Write<char> for Serial<Usart> {
     fn write(&mut self, c: char) -> nb::Result<(), Error>{
         let registers = self.usart.get_registers_ref();
         if c == '\n' {
-            while (registers.sr.get() & (1 << 7)) == 0 { }
-            registers.dr.set('\r' as u32);
+            while (registers.sr.read() & (1 << 7)) == 0 { }
+            unsafe {
+                registers.dr.write('\r' as u32);
+            }
         }
-        while (registers.sr.get() & (1 << 7)) == 0 { }
-        registers.dr.set(c as u32);
+        while (registers.sr.read() & (1 << 7)) == 0 { }
+        unsafe {
+            registers.dr.write(c as u32);
+        }
         Ok(())
     }
 
     fn flush(&mut self) -> nb::Result<(), Error> {
         let registers = self.usart.get_registers_ref();
-        while (registers.sr.get() & (1 << 7)) == 0 { }
+        while (registers.sr.read() & (1 << 7)) == 0 { }
         Ok(())
     }
 }
@@ -76,8 +81,10 @@ impl Serial<Usart> {
     pub fn usart3() -> Serial<Usart> {
         let gpio = Gpio::new(0x40020c00);
         let registers = gpio.get_registers_ref();
-        registers.moder.set((0x2 << 16) | (0x2 << 18));
-        registers.afrh.set(0x7 | (0x7 << 4));
+        unsafe {
+            registers.moder.write((0x2 << 16) | (0x2 << 18));
+            registers.afrh.write(0x7 | (0x7 << 4));
+        }
         /*
         // GPIOD
         gpio.deref().moder.modify(|_, w| {
@@ -93,8 +100,10 @@ impl Serial<Usart> {
 
         let usart = Usart::new(0x40004800);
         let registers = usart.get_registers_ref();
-        registers.brr.set(0x683);
-        registers.cr1.set((1 << 5) | (1  << 3) | (1 << 2) | (1 << 13));
+        unsafe {
+            registers.brr.write(0x683);
+            registers.cr1.write((1 << 5) | (1  << 3) | (1 << 2) | (1 << 13));
+        }
 
         Serial { usart }
     }

@@ -7,6 +7,7 @@ pub mod serial;
 pub mod rcc;
 pub mod irqs;
 pub mod nvic;
+pub mod systick;
 
 use irqs::DefaultIrqHandler;
 use rt::Vector;
