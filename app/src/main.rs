@@ -19,7 +19,8 @@ use device::systick::Systick;
 use embedded_hal::serial::{Read, Write};
 use kernel::process_create;
 use kernel::process::Process;
-use kernel::scheduler::{ProcessList, Scheduler};
+use kernel::scheduler::{ProcessList, SimpleScheduler};
+use kernel::kernel::Kernel;
 
 struct Logger {
     hstdout: HStdout,
@@ -92,14 +93,15 @@ pub fn main() -> ! {
     }
     // Dummy code to prevent optimizing
     unsafe { IRQS[0] = Vector { reserved: 0 }; }
-    let mut scheduler = Scheduler::create();
+    let mut scheduler = SimpleScheduler::create();
     let mut proc_item = ProcessList::create(process);
     let mut tick_item = ProcessList::create(tick_process);
     scheduler.push(&mut proc_item);
     scheduler.push(&mut tick_item);
+    let mut kernel = Kernel::create(scheduler, serial);
+    kernel.run(&mut nvic);
 
     loop {
-        scheduler.run(&mut serial, &mut nvic);
     }
 
     // debug!(logger, "Goodbye");
