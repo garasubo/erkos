@@ -2,5 +2,6 @@
 #![crate_type = "rlib"]
 #![feature(asm)]
 
-pub mod process;
 pub mod macros;
+pub mod process;
+pub mod scheduler;

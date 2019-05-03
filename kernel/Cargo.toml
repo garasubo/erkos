@@ -5,3 +5,6 @@ authors = ["garasubo <garasubo@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+device = { path = "../device" }
+rt = { path = "../rt" }
+embedded-hal = "0.2.2"
