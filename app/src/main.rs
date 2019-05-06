@@ -18,7 +18,7 @@ use device::systick::Systick;
 use embedded_hal::serial::{Read, Write};
 use kernel::process_create;
 use kernel::process::Process;
-use kernel::scheduler::simple_scheduler::{ProcessList, SimpleScheduler};
+use kernel::scheduler::simple_scheduler::{ProcessListItem, SimpleScheduler};
 use kernel::interrupt_manager::{InterruptManager, IrqId};
 use kernel::kernel::Kernel;
 
@@ -92,8 +92,8 @@ pub fn main() -> ! {
     }
     // Dummy code to prevent optimizing
     let mut scheduler = SimpleScheduler::create();
-    let mut proc_item = ProcessList::create(process);
-    let mut tick_item = ProcessList::create(tick_process);
+    let mut proc_item = ProcessListItem::create(process);
+    let mut tick_item = ProcessListItem::create(tick_process);
     scheduler.push(&mut proc_item);
     scheduler.push(&mut tick_item);
     let mut interrupt_manager = InterruptManager::create(nvic);
