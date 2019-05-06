@@ -2,22 +2,24 @@ use device::nvic::Nvic;
 use rt::Vector;
 use device::IRQS;            
 use core::mem;
+use crate::process_list::ProcessList;
 
-struct InterruptHandler {
+struct InterruptHandler<'a> {
     id: IrqId,
     func: fn(),
+    waiting: ProcessList<'a>,
 }
 
 // TODO: remove dependency on nvic
-pub struct InterruptManager {
+pub struct InterruptManager<'a> {
     nvic: Nvic,
     // TODO: variable length
-    handlers: [InterruptHandler; 10],
+    handlers: [InterruptHandler<'a>; 10],
     handler_count: usize,
 }
 
-impl InterruptManager {
-    pub fn create(nvic: Nvic) -> InterruptManager {
+impl<'a> InterruptManager<'a> {
+    pub fn create(nvic: Nvic) -> InterruptManager<'a> {
         unsafe {
             InterruptManager {
                 nvic,
@@ -33,19 +35,22 @@ impl InterruptManager {
         }        
         unsafe { IRQS[id as usize] = Vector { handler: DefaultIrqHandler }; }
         self.nvic.enable(id as u32);
-        self.handlers[self.handler_count] = InterruptHandler { id, func };
+        self.handlers[self.handler_count] = InterruptHandler { id, func, waiting: ProcessList::new() };
         self.handler_count += 1;
     }
 
-    pub fn check_pending(&self) {
+    pub fn check_pending(&mut self) -> ProcessList<'a> {
+        let mut process_list = ProcessList::new();
         for i in 0..self.handler_count {
             let id = self.handlers[i].id as u32;
             if self.nvic.is_pending(id) {
                 (self.handlers[i].func)();
+                process_list.drain(&mut self.handlers[i].waiting);
                 self.nvic.clear_pending(id);
                 self.nvic.enable(id);
             }
         }
+        process_list
     }
 }
 

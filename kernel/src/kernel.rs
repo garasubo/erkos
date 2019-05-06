@@ -7,13 +7,13 @@ use device::serial::{Usart, Serial};
 use embedded_hal::serial::Write;
 use rt::SYSCALL_FIRED;
 
-pub struct Kernel<S: Sized> {
+pub struct Kernel<'a, S: Sized> {
     scheduler: RefCell<S>,
-    interrupt_manager: InterruptManager,
+    interrupt_manager: InterruptManager<'a>,
     serial: RefCell<Serial<Usart>>,
 }
 
-impl<'a, S> Kernel<S> where S: Scheduler<'a> + Sized {
+impl<'a, S> Kernel<'a, S> where S: Scheduler<'a> + Sized {
     pub fn create(scheduler: S, serial: Serial<Usart>, interrupt_manager: InterruptManager) -> Kernel<S> {
         Kernel {
             scheduler: RefCell::new(scheduler),
@@ -22,8 +22,9 @@ impl<'a, S> Kernel<S> where S: Scheduler<'a> + Sized {
         }
     }
 
-    pub fn run(&mut self) -> ! {
+    pub fn run(&'a mut self) -> ! {
         unsafe { asm!("cpsid i" ::: "memory" : "volatile"); }
+        let mut interrupt_manager = &mut self.interrupt_manager;
         loop {
             let mut sched = self.scheduler.borrow_mut();
             let mut serial = self.serial.borrow_mut();
@@ -63,7 +64,8 @@ impl<'a, S> Kernel<S> where S: Scheduler<'a> + Sized {
                 }
             }
 
-            self.interrupt_manager.check_pending();
+            let mut released_list = interrupt_manager.check_pending();
+            sched.resume_list(&mut released_list);
 
         }
     }

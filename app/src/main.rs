@@ -3,12 +3,9 @@
 #![feature(asm)]
 
 use rt::entry;
-use rt::Vector;
-use rt::SYSCALL_FIRED;
 use cortex_m_semihosting::{debug, hio::{self, HStdout}};
 use log::{debug, Log, dhprintln};
 use core::option::Option;
-use core::slice::from_raw_parts;
 use device::gpio::Gpio;
 use device::rcc::{Rcc, RCC};
 use device::serial::{Usart, Serial};
@@ -18,7 +15,8 @@ use device::systick::Systick;
 use embedded_hal::serial::{Read, Write};
 use kernel::process_create;
 use kernel::process::Process;
-use kernel::scheduler::simple_scheduler::{ProcessListItem, SimpleScheduler};
+use kernel::scheduler::simple_scheduler::{SimpleScheduler};
+use kernel::process_list::ProcessListItem;
 use kernel::interrupt_manager::{InterruptManager, IrqId};
 use kernel::kernel::Kernel;
 
@@ -100,9 +98,6 @@ pub fn main() -> ! {
     interrupt_manager.register(IrqId::USART3, serial_loopback);
     let mut kernel = Kernel::create(scheduler, serial, interrupt_manager);
     kernel.run();
-
-    loop {
-    }
 
     // debug!(logger, "Goodbye");
     //dhprintln!("goodbye");
