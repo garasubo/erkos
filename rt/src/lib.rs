@@ -13,7 +13,19 @@ pub unsafe extern "C" fn Reset() -> ! {
         static mut _sdata: u8;
         static mut _edata: u8;
         static _sidata: u8;
+        static mut _svector_table: u8;
+        static mut _evector_table: u8;
+        static _sivector_table: u8;
+        static mut _sirq_table: u8;
+        static mut _eirq_table: u8;
     }
+
+    let count = &_evector_table as *const u8 as usize - &_svector_table as *const u8 as usize;
+    ptr::copy_nonoverlapping(&_sivector_table as *const u8, &mut _svector_table as *mut u8, count);
+    let count = &_eirq_table as *const u8 as usize - &_sirq_table as *const u8 as usize;
+    ptr::write_bytes(&mut _sirq_table as *mut u8, 0, count);
+    // write to VTOR
+    ptr::write_volatile(0xE000_ED08 as *mut u32, &_svector_table as *const u8 as u32);
 
     let count = &_ebss as *const u8 as usize - &_sbss as *const u8 as usize;
     ptr::write_bytes(&mut _sbss as *mut u8, 0, count);

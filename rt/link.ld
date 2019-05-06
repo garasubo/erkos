@@ -9,6 +9,7 @@ ENTRY(Reset);
 
 EXTERN(RESET_VECTOR);
 EXTERN(EXCEPTIONS);
+EXTERN(IRQS);
 
 SECTIONS
 {
@@ -16,14 +17,12 @@ SECTIONS
   {
     /* First entry: initial Stack Pointer value */
     LONG(ORIGIN(RAM) + LENGTH(RAM));
-
     /* Second entry: reset vector */
     KEEP(*(.vector_table.reset_vector));
     KEEP(*(.vector_table.exceptions));
-    KEEP(*(.vector_table.irqs));
   } > FLASH
 
-  .text :
+  .text : 
   {
     *(.text .text.*);
   } > FLASH
@@ -33,7 +32,18 @@ SECTIONS
       *(.rodata .rodata.*);
   } > FLASH
 
-  .bss :
+  _sivector_table = LOADADDR(.vector_table);
+
+  .app_vector_table (NOLOAD) : {
+    _svector_table = .;
+    . = . + 0x40;
+    _evector_table = .;
+    _sirq_table = .;
+    KEEP(*(.irq_table));
+    _eirq_table = .;
+  } > RAM
+
+  .bss (NOLOAD):
   {
     _sbss = .;
     *(.bss .bss.*);

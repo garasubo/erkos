@@ -1,5 +1,4 @@
 use volatile_register::{RW, RO};
-use crate::irqs::IrqId;
 
 #[repr(C)]
 pub struct NvicRegisters {

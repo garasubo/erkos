@@ -1,31 +1,36 @@
 use crate::scheduler::{Scheduler, ExecResult};
+use crate::interrupt_manager::InterruptManager;
 use core::slice::from_raw_parts;
 use core::cell::RefCell;
-use device::irqs::IrqId;
 use device::nvic::Nvic;
 use device::serial::{Usart, Serial};
-use embedded_hal::serial::{Read, Write};
+use embedded_hal::serial::Write;
 use rt::SYSCALL_FIRED;
 
 pub struct Kernel<S: Sized> {
     scheduler: RefCell<S>,
+    interrupt_manager: InterruptManager,
     serial: RefCell<Serial<Usart>>,
 }
 
 impl<'a, S> Kernel<S> where S: Scheduler<'a> + Sized {
-    pub fn create(scheduler: S, serial: Serial<Usart>) -> Kernel<S> {
+    pub fn create(scheduler: S, serial: Serial<Usart>, interrupt_manager: InterruptManager) -> Kernel<S> {
         Kernel {
             scheduler: RefCell::new(scheduler),
             serial: RefCell::new(serial),
+            interrupt_manager,
         }
     }
 
-    pub fn run(&mut self, nvic: &Nvic) -> ! {
+    pub fn run(&mut self) -> ! {
+        unsafe { asm!("cpsid i" ::: "memory" : "volatile"); }
         loop {
             let mut sched = self.scheduler.borrow_mut();
             let mut serial = self.serial.borrow_mut();
             let result = sched.exec_current_proc(|process| {
+                unsafe { asm!("cpsie i" ::: "memory" : "volatile"); }
                 process.execute();
+                unsafe { asm!("cpsid i" ::: "memory" : "volatile"); }
                 unsafe {
                     if SYSCALL_FIRED > 0 {
                         let base_frame = from_raw_parts(process.sp as *const u32, 8);
@@ -53,18 +58,13 @@ impl<'a, S> Kernel<S> where S: Scheduler<'a> + Sized {
 
             unsafe { 
                 if SYSTICK_FIRED > 0 {
-                    asm!("cpsid i" ::: "memory" : "volatile");
                     sched.schedule_next();
                     SYSTICK_FIRED = 0;
-                    asm!("cpsie i" ::: "memory" : "volatile");
                 }
             }
 
-            if nvic.is_pending(IrqId::USART3 as u32) {
-                serial.read().map(|c| serial.write(c));
-                nvic.clear_pending(IrqId::USART3 as u32);
-                nvic.enable(IrqId::USART3 as u32);
-            }
+            self.interrupt_manager.check_pending();
+
         }
     }
 }

@@ -1,8 +1,16 @@
 use core::slice::from_raw_parts_mut;
 
+pub enum ProcessState {
+    READY,
+    RUNNING,
+    WAITING,
+    DORMANT,
+}
+
 pub struct Process<'a> {
     pub sp: *mut u8,
     pub regs: &'a [u32; 8],
+    pub state: ProcessState,
 }
 
 impl<'a> Process<'a> {
@@ -20,12 +28,14 @@ impl<'a> Process<'a> {
         Process {
             sp: base_frame_ptr as *mut u8,
             regs: regs,
+            state: ProcessState::DORMANT,
         }
     }
 
     pub fn execute(&mut self) {
         let mut sp = self.sp;
         let regs = self.regs;
+        self.state = ProcessState::RUNNING;
         unsafe {
             asm!(
                 "

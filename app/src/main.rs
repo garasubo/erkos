@@ -12,14 +12,14 @@ use core::slice::from_raw_parts;
 use device::gpio::Gpio;
 use device::rcc::{Rcc, RCC};
 use device::serial::{Usart, Serial};
-use device::irqs::IrqId;
 use device::IRQS;
 use device::nvic::Nvic;
 use device::systick::Systick;
 use embedded_hal::serial::{Read, Write};
 use kernel::process_create;
 use kernel::process::Process;
-use kernel::scheduler::{ProcessList, SimpleScheduler};
+use kernel::scheduler::simple_scheduler::{ProcessList, SimpleScheduler};
+use kernel::interrupt_manager::{InterruptManager, IrqId};
 use kernel::kernel::Kernel;
 
 struct Logger {
@@ -87,19 +87,19 @@ pub fn main() -> ! {
         gpiob.get_registers_ref().bsrr.write(0x1);
     }
     let mut nvic = Nvic::new();
-    nvic.enable(IrqId::USART3 as u32);
     for c in "hello world".chars() {
         serial.write(c);
     }
     // Dummy code to prevent optimizing
-    unsafe { IRQS[0] = Vector { reserved: 0 }; }
     let mut scheduler = SimpleScheduler::create();
     let mut proc_item = ProcessList::create(process);
     let mut tick_item = ProcessList::create(tick_process);
     scheduler.push(&mut proc_item);
     scheduler.push(&mut tick_item);
-    let mut kernel = Kernel::create(scheduler, serial);
-    kernel.run(&mut nvic);
+    let mut interrupt_manager = InterruptManager::create(nvic);
+    interrupt_manager.register(IrqId::USART3, serial_loopback);
+    let mut kernel = Kernel::create(scheduler, serial, interrupt_manager);
+    kernel.run();
 
     loop {
     }
@@ -144,4 +144,9 @@ pub unsafe extern "C" fn tick(_r0: usize, _r1: usize, _r2: usize) -> ! {
             "
         :::"r0":"volatile");
     }
+}
+
+pub fn serial_loopback() {
+    let mut serial = Serial::usart3();
+    serial.read().map(|c| serial.write(c));
 }

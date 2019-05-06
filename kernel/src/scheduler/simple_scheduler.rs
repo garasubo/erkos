@@ -6,6 +6,7 @@ use super::{Scheduler, ExecResult};
 pub struct ProcessList<'a> {
     current: Process<'a>,
     next: Option<&'a mut ProcessList<'a>>,
+    prev: Option<*mut ProcessList<'a>>,
 }
 
 impl<'a> ProcessList<'a> {
@@ -13,12 +14,14 @@ impl<'a> ProcessList<'a> {
         ProcessList {
             current: process,
             next: None,
+            prev: None,
         }
     }
 }
 
 pub struct SimpleScheduler<'a> {
     procs: Option<&'a mut ProcessList<'a>>,
+    waiting: Option<&'a mut ProcessList<'a>>,
     last: Option<*mut ProcessList<'a>>,
 }
 
@@ -38,17 +41,24 @@ impl<'a> Scheduler<'a> for SimpleScheduler<'a> {
 
     fn schedule_next(&mut self) {
         if self.procs.is_some() {
-            let current = self.procs.take().unwrap();
-            let next = current.next.take();
+            let mut current = self.procs.take().unwrap();
+            let mut next = current.next.take();
             if next.is_some() {
                 let current_ptr = current as *mut ProcessList;
                 let last = self.last.take();
                 match last.iter().next() {
                     Some(item) => {
+                        current.prev.replace(*item);
                         unsafe { (*(*item)).next.replace(current); }
                     },
                     None => {},
                 };
+                match next.iter_mut().next() {
+                    Some(item) => {
+                        (*item).prev = None;
+                    },
+                    None => {},
+                }
                 self.procs = next;
                 self.last.replace(current_ptr);
             } else {
@@ -64,6 +74,7 @@ impl<'a> SimpleScheduler<'a> {
     pub fn create() -> SimpleScheduler<'a> {
         SimpleScheduler {
             procs: None,
+            waiting: None,
             last: None,
         }
     }
