@@ -84,7 +84,7 @@ pub fn main() -> ! {
         gpiob.get_registers_ref().moder.modify(|val| (val | 0x1 | (0x1 << 14)));
         gpiob.get_registers_ref().bsrr.write(0x1);
     }
-    let mut nvic = Nvic::new();
+    let nvic = Nvic::new();
     for c in "hello world".chars() {
         serial.write(c);
     }

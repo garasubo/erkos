@@ -1,5 +1,6 @@
 use core::slice::from_raw_parts_mut;
 
+#[derive(PartialEq)]
 pub enum ProcessState {
     READY,
     RUNNING,
@@ -41,12 +42,14 @@ impl<'a> Process<'a> {
                 "
                 msr psp, $0
                 ldmia $2, {r4-r11}
+                cpsie i
                 svc 0
+                cpsid i
                 stmia $2, {r4-r11}
                 mrs $0, psp
                 "
                 :"={r0}"(sp): "{r0}"(sp),"{r1}"(regs)
-                :"r4","r5","r6","r7","r8","r9","r10","r11":"volatile"
+                :"r4","r5","r6","r7","r8","r9","r10","r11","memory":"volatile"
             );
         }
         self.sp = sp;

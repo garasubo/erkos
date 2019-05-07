@@ -11,22 +11,29 @@ pub struct SimpleScheduler<'a> {
 }
 
 impl<'a> Scheduler<'a> for SimpleScheduler<'a> {
-    fn exec_current_proc<F>(&mut self, mut executer: F) -> ExecResult
-      where F : FnMut(&mut Process<'a>)
+    fn get_current_proc(&mut self) -> Option<&mut &'a mut ProcessListItem<'a>> {
+        self.active.head_mut()
+    }
+    
+    fn pop_current_proc(&mut self) -> Option<&'a mut ProcessListItem<'a>> {
+        self.active.pop()
+    }
+
+    fn exec_current_proc(&mut self) -> ExecResult
     {
         if self.active.is_empty() {
             ExecResult::Nothing
         } else {
-            let mut process = &mut self.active.head_mut().unwrap().current;
+            let process = &mut self.active.head_mut().unwrap().current;
 
-            executer(process);
+            process.execute();
             ExecResult::Executed
         }
     }
 
     fn schedule_next(&mut self) {
         if !self.active.is_empty() {
-            let mut current = self.active.pop().unwrap();
+            let current = self.active.pop().unwrap();
             self.active.push(current);
         }
     }

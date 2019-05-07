@@ -2,7 +2,7 @@ use device::nvic::Nvic;
 use rt::Vector;
 use device::IRQS;            
 use core::mem;
-use crate::process_list::ProcessList;
+use crate::process_list::{ProcessList, ProcessListItem};
 
 struct InterruptHandler<'a> {
     id: IrqId,
@@ -37,6 +37,17 @@ impl<'a> InterruptManager<'a> {
         self.nvic.enable(id as u32);
         self.handlers[self.handler_count] = InterruptHandler { id, func, waiting: ProcessList::new() };
         self.handler_count += 1;
+    }
+
+    pub fn push_wait(&mut self, tar_id: IrqId, item: &'a mut ProcessListItem<'a>) {
+        for i in 0..self.handler_count {
+            let id = self.handlers[i].id;
+            if id == tar_id {
+                self.handlers[i].waiting.push(item);
+                return;
+            }
+        }
+        panic!("no handler");
     }
 
     pub fn check_pending(&mut self) -> ProcessList<'a> {
@@ -87,7 +98,16 @@ pub unsafe extern "C" fn DefaultIrqHandler() {
 }
 
 #[repr(u32)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum IrqId {
     USART3 = 39,
+}
+
+impl IrqId {
+    pub fn from_u32(x: u32) -> Option<IrqId> {
+        match x {
+            39 => Some(IrqId::USART3),
+            _ => None,
+        }
+    }
 }
