@@ -1,3 +1,7 @@
+#![feature(custom_test_frameworks)]
+#![test_runner(rt::test_runner)]
+#![reexport_test_harness_main = "test_main"]
+#![cfg_attr(test, no_main)]
 #![no_std]
 #![no_main]
 #![feature(asm)]
@@ -62,7 +66,7 @@ pub fn main() -> ! {
     //let mut logger = Logger { hstdout };
 
     // debug!(logger, "Hello, world!");
-    //dhprintln!("hello");
+    // dhprintln!("hello");
 
     //logger.log(address as u8);
     

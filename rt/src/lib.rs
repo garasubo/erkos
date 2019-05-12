@@ -1,9 +1,13 @@
+#![feature(custom_test_frameworks)]
+#![test_runner(crate::test_runner)]
+#![reexport_test_harness_main = "test_main"]
 #![no_std]
 #![feature(asm)]
 
 use cortex_m_semihosting::debug;
 use core::panic::PanicInfo;
 use core::ptr;
+use log::dhprintln;
 
 #[no_mangle]
 pub unsafe extern "C" fn Reset() -> ! {
@@ -52,11 +56,18 @@ fn panic(_panic: &PanicInfo<'_>) -> ! {
 #[macro_export]
 macro_rules! entry {
     ($path:path) => {
+        #[cfg(not(test))]
         #[export_name = "main"]
         pub unsafe fn __main() -> ! {
             let f: fn() -> ! = $path;
 
             f()
+        }
+        #[cfg(test)]
+        #[export_name = "main"]
+        pub unsafe fn __main() -> ! {
+            test_main();
+            loop {}
         }
     }
 }
@@ -134,4 +145,13 @@ pub unsafe extern "C" fn SVCall() {
         bx lr
         "
     ::::"volatile");
+}
+
+
+pub fn test_runner(tests: &[&dyn Fn()]) {
+    dhprintln!("Running {} tests", tests.len());
+    for test in tests {
+        test();
+    }
+    debug::exit(debug::EXIT_SUCCESS);
 }
