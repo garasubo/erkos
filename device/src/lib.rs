@@ -2,10 +2,12 @@
 #![no_std]
 #![feature(asm)]
 
+pub mod exti;
 pub mod gpio;
 pub mod serial;
 pub mod rcc;
 pub mod nvic;
+pub mod syscfg;
 pub mod systick;
 
 use rt::Vector;

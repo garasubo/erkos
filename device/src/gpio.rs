@@ -1,5 +1,5 @@
 extern crate embedded_hal as hal;
-use volatile_register::RW;
+use volatile_register::{RO, RW};
 
 #[repr(C)]
 pub struct GpioRegisters {
@@ -7,7 +7,7 @@ pub struct GpioRegisters {
     pub otyper: RW<u32>,
     pub ospeedr: RW<u32>,
     pub pupdr: RW<u32>,
-    pub idr: RW<u32>,
+    pub idr: RO<u32>,
     pub odr: RW<u32>,
     pub bsrr: RW<u32>,
     pub lckr: RW<u32>,

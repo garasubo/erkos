@@ -101,12 +101,14 @@ pub unsafe extern "C" fn DefaultIrqHandler() {
 #[derive(Copy, Clone, PartialEq)]
 pub enum IrqId {
     USART3 = 39,
+    EXTI15_10 = 40,
 }
 
 impl IrqId {
     pub fn from_u32(x: u32) -> Option<IrqId> {
         match x {
             39 => Some(IrqId::USART3),
+            40 => Some(IrqId::EXTI15_10),
             _ => None,
         }
     }
