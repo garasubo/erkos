@@ -18,6 +18,7 @@ use embedded_hal::serial::{Read, Write};
 use kernel::process_create;
 use kernel::process::Process;
 use kernel::scheduler::simple_scheduler::{SimpleScheduler};
+use kernel::scheduler::{Scheduler};
 use kernel::process_list::ProcessListItem;
 use kernel::interrupt_manager::{InterruptManager, IrqId};
 use kernel::kernel::Kernel;
@@ -138,7 +139,14 @@ pub unsafe extern "C" fn app_main(_r0: usize, _r1: usize, _r2: usize) -> ! {
         svc 1
         "
     ::"{r1}"(message_ptr), "{r2}"(length)::"volatile");
-    loop {}
+    loop {
+        asm!(
+            "
+            mov r0, #5
+            svc 1
+            "
+        :::"r0":"volatile");
+    }
 }
 
 pub unsafe extern "C" fn button_callback() -> ! {
@@ -168,14 +176,14 @@ pub unsafe extern "C" fn tick(_r0: usize, _r1: usize, _r2: usize) -> ! {
         gpiob.get_registers_ref().bsrr.write(0x1 << 7);
         asm!(
             "
-            mov r0, #2
+            mov r0, #4
             svc 1
             "
         :::"r0":"volatile");
         gpiob.get_registers_ref().bsrr.write(0x1 << 23);
         asm!(
             "
-            mov r0, #2
+            mov r0, #4
             svc 1
             "
         :::"r0":"volatile");

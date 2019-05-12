@@ -41,6 +41,18 @@ impl<'a> Scheduler<'a> for SimpleScheduler<'a> {
     fn resume_list(&mut self, process_list: &mut ProcessList<'a>) {
         self.active.join(process_list);
     }
+
+    fn push(&mut self, proc: &'a mut ProcessListItem<'a>) {
+        self.active.push(proc);
+    }
+
+    fn push_wait(&mut self, proc: &'a mut ProcessListItem<'a>) {
+        self.waiting.push(proc);
+    }
+
+    fn resume_waiting(&mut self) {
+        self.active.join(&mut self.waiting);
+    }
 }
 
 impl<'a> SimpleScheduler<'a> {
@@ -51,7 +63,4 @@ impl<'a> SimpleScheduler<'a> {
         }
     }
 
-    pub fn push(&mut self, proc: &'a mut ProcessListItem<'a>) {
-        self.active.push(proc);
-    }
 }

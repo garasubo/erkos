@@ -68,6 +68,11 @@ impl<'a, S> Kernel<'a, S> where S: Scheduler<'a> + Sized {
                     } else if svc_id == 3 {
                         let arg1 = base_frame[1];
                         interrupt_manager.push_wait(IrqId::from_u32(arg1).unwrap(), sched.pop_current_proc().unwrap());
+                    } else if svc_id == 4 {
+                        let current = sched.pop_current_proc().unwrap();
+                        sched.push_wait(current);
+                    } else if svc_id == 5 {
+                        sched.pop_current_proc().unwrap();
                     }
                 },
                 None => {}
@@ -78,6 +83,7 @@ impl<'a, S> Kernel<'a, S> where S: Scheduler<'a> + Sized {
 
             unsafe { 
                 if SYSTICK_FIRED > 0 {
+                    sched.resume_waiting();
                     sched.schedule_next();
                     SYSTICK_FIRED = 0;
                 }
