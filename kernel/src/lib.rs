@@ -8,3 +8,4 @@ pub mod process;
 pub mod scheduler;
 pub mod kernel;
 pub mod process_list;
+pub mod syscall_id;

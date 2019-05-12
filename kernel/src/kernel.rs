@@ -1,5 +1,6 @@
 use crate::scheduler::{Scheduler, ExecResult};
 use crate::interrupt_manager::{IrqId, InterruptManager};
+use crate::syscall_id;
 use core::slice::from_raw_parts;
 use core::cell::RefCell;
 use device::serial::{Usart, Serial};
@@ -56,23 +57,33 @@ impl<'a, S> Kernel<'a, S> where S: Scheduler<'a> + Sized {
                 Some(sp) => {
                     let base_frame = unsafe { from_raw_parts(sp, 8) };
                     let svc_id = base_frame[0];
-                    if svc_id == 1 {
-                        let arg2 = base_frame[2] as usize;
-                        let arg1 = unsafe { from_raw_parts(base_frame[1] as *const u8, arg2) };
+                    match svc_id {
+                        syscall_id::PRINT => {
+                            let arg2 = base_frame[2] as usize;
+                            let arg1 = unsafe { from_raw_parts(base_frame[1] as *const u8, arg2) };
 
-                        for i in 0..arg2 {
-                            serial.write(arg1[i] as char);
+                            for i in 0..arg2 {
+                                serial.write(arg1[i] as char);
+                            }
+                        },
+                        syscall_id::YIELD => {
+                            unsafe { SYSTICK_FIRED = 1 };
+                        },
+                        syscall_id::WAIT_IRQ => {
+                            let arg1 = base_frame[1];
+                            interrupt_manager.push_wait(IrqId::from_u32(arg1).unwrap(), sched.pop_current_proc().unwrap());
+                        },
+                        syscall_id::WAIT_SYSTICK => {
+                            let current = sched.pop_current_proc().unwrap();
+                            sched.push_wait(current);
+                        },
+                        syscall_id::DORMANT => {
+                            sched.pop_current_proc().unwrap();
+                        },
+                        _ => {
+                            // TODO: error handling
+                            panic!("unknown svc");
                         }
-                    } else if svc_id == 2 {
-                        unsafe { SYSTICK_FIRED = 1 };
-                    } else if svc_id == 3 {
-                        let arg1 = base_frame[1];
-                        interrupt_manager.push_wait(IrqId::from_u32(arg1).unwrap(), sched.pop_current_proc().unwrap());
-                    } else if svc_id == 4 {
-                        let current = sched.pop_current_proc().unwrap();
-                        sched.push_wait(current);
-                    } else if svc_id == 5 {
-                        sched.pop_current_proc().unwrap();
                     }
                 },
                 None => {}
