@@ -56,7 +56,7 @@ impl<'a> InterruptManager<'a> {
             let id = self.handlers[i].id as u32;
             if self.nvic.is_pending(id) {
                 (self.handlers[i].func)();
-                process_list.drain(&mut self.handlers[i].waiting);
+                process_list.join(&mut self.handlers[i].waiting);
                 self.nvic.clear_pending(id);
                 self.nvic.enable(id);
             }

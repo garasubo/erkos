@@ -72,6 +72,9 @@ impl<'a, S> Kernel<'a, S> where S: Scheduler<'a> + Sized {
                 },
                 None => {}
             }
+            
+            let mut released_list = interrupt_manager.check_pending();
+            sched.resume_list(&mut released_list);
 
             unsafe { 
                 if SYSTICK_FIRED > 0 {
@@ -79,10 +82,6 @@ impl<'a, S> Kernel<'a, S> where S: Scheduler<'a> + Sized {
                     SYSTICK_FIRED = 0;
                 }
             }
-
-            let mut released_list = interrupt_manager.check_pending();
-            sched.resume_list(&mut released_list);
-
         }
     }
 }

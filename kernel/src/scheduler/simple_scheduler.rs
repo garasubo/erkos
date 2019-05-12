@@ -39,7 +39,7 @@ impl<'a> Scheduler<'a> for SimpleScheduler<'a> {
     }
 
     fn resume_list(&mut self, process_list: &mut ProcessList<'a>) {
-        self.active.drain(process_list);
+        self.active.join(process_list);
     }
 }
 

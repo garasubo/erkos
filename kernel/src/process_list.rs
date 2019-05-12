@@ -65,7 +65,7 @@ impl<'a> ProcessList<'a> {
         self.head.iter_mut().next()
     }
 
-    pub fn drain(&mut self, target: &mut ProcessList<'a>) {
+    pub fn join(&mut self, target: &mut ProcessList<'a>) {
         if self.is_empty() {
             self.head = target.head.take();
             self.last = target.last.take();
@@ -76,7 +76,7 @@ impl<'a> ProcessList<'a> {
                 let last_ptr = self.last.unwrap();
                 tar_head_item.prev.replace(last_ptr);
                 unsafe {
-                    (*last_ptr).next = target.head.take();
+                    (*last_ptr).next = tar_head;
                 }
                 self.last = target.last.take();
             }

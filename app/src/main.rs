@@ -148,13 +148,11 @@ pub unsafe extern "C" fn button_callback() -> ! {
     loop {
         asm!(
             "
-            mov r0, #2
+            mov r0, #3
             mov r1, #40
             svc 1
             "
         :::"r0","r1":"volatile");
-    }
-    loop {
         asm!(
             "
             mov r0, #1
