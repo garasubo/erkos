@@ -107,3 +107,50 @@ impl<'a, T> ListItem<'a, T> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_list() {
+        let mut item = ListItem::create(1);
+        assert_eq!(1, *item);
+        let mut list = LinkedList::new();
+        list.push(&mut item);
+        let head: &u32 = list.head_mut().unwrap();
+        assert_eq!(1, *head);
+        let head: &u32 = list.pop().unwrap();
+        assert_eq!(1, *head);
+        assert!(list.is_empty());
+    }
+    
+    #[test]
+    fn test_join() {
+        let mut list1 = LinkedList::new();
+        let mut list2 = LinkedList::new();
+        let mut item1 = ListItem::create(1);
+        list1.push(&mut item1);
+        let mut item2 = ListItem::create(3);
+        list1.push(&mut item2);
+        let mut item3 = ListItem::create(5);
+        list1.push(&mut item3);
+        let mut item4 = ListItem::create(2);
+        list1.push(&mut item4);
+        let mut item5 = ListItem::create(4);
+        list1.push(&mut item5);
+        list1.join(&mut list2);
+        assert!(list2.is_empty());
+        let item: &u32 = list1.pop().unwrap();
+        assert_eq!(1, *(item));
+        let item: &u32 = list1.pop().unwrap();
+        assert_eq!(3, *(item));
+        let item: &u32 = list1.pop().unwrap();
+        assert_eq!(5, *(item));
+        let item: &u32 = list1.pop().unwrap();
+        assert_eq!(2, *(item));
+        let item: &u32 = list1.pop().unwrap();
+        assert_eq!(4, *(item));
+        assert!(list1.is_empty());
+    }
+}
