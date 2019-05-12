@@ -33,7 +33,7 @@ impl<'a, S> Kernel<'a, S> where S: Scheduler<'a> + Sized {
 
             match current {
                 Some(current_item) => {
-                    let process = &mut (*(*current_item)).current;
+                    let process = &mut (*(*current_item));
                     process.execute();
                     unsafe {
                         if SYSCALL_FIRED > 0 {

@@ -24,7 +24,7 @@ impl<'a> Scheduler<'a> for SimpleScheduler<'a> {
         if self.active.is_empty() {
             ExecResult::Nothing
         } else {
-            let process = &mut self.active.head_mut().unwrap().current;
+            let process = &mut self.active.head_mut().unwrap();
 
             process.execute();
             ExecResult::Executed
