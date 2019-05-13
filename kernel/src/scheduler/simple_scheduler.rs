@@ -1,6 +1,5 @@
 use core::option::Option;
 
-use crate::process::Process;
 use crate::process_list::{ProcessList, ProcessListItem};
 use super::{Scheduler, ExecResult};
 

@@ -1,4 +1,3 @@
-use crate::process::Process;
 use crate::process_list::{ProcessList, ProcessListItem};
 
 pub mod simple_scheduler;

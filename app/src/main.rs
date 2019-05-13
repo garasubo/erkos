@@ -7,66 +7,30 @@
 #![feature(asm)]
 
 use rt::entry;
-use cortex_m_semihosting::{debug, hio::{self, HStdout}};
-use log::{debug, Log, dhprintln};
-use core::option::Option;
 use device::gpio::Gpio;
-use device::rcc::{Rcc, RCC};
-use device::serial::{Usart, Serial};
-use device::IRQS;
-use device::nvic::Nvic;
-use device::syscfg::Syscfg;
-use device::systick::Systick;
+use device::rcc:: RCC;
+use device::serial::Serial;
+use arch::nvic::Nvic;
+use arch::systick::Systick;
 use device::exti::Exti;
+use device::irq::IrqId;
+use device::syscfg::Syscfg;
 use embedded_hal::serial::{Read, Write};
 use kernel::process_create;
 use kernel::process::Process;
 use kernel::scheduler::simple_scheduler::{SimpleScheduler};
 use kernel::scheduler::{Scheduler};
 use kernel::process_list::ProcessListItem;
-use kernel::interrupt_manager::{InterruptManager, IrqId};
+use kernel::interrupt_manager::InterruptManager;
 use kernel::kernel::Kernel;
-
-struct Logger {
-    hstdout: HStdout,
-}
-
-impl Log for Logger {
-    type Error = ();
-
-    fn log(&mut self, address: u8) -> Result<(), ()> {
-        self.hstdout.write_all(&[address])
-    }
-}
 
 entry!(main);
 
-// copied from https://github.com/tock/tock
-macro_rules! static_init {
-    ($T:ty, $e:expr) => {
-        // Ideally we could use mem::size_of<$T>, uninitialized or zerod here
-        // instead of having an `Option`, however that is not currently possible
-        // in Rust, so in some cases we're wasting up to a word.
-        {
-            use core::{mem, ptr};
-            // Statically allocate a read-write buffer for the value, write our
-            // initial value into it (without dropping the initial zeros) and
-            // return a reference to it.
-            static mut BUF: Option<$T> = None;
-            let tmp : &'static mut $T = mem::transmute(&mut BUF);
-            ptr::write(tmp as *mut $T, $e);
-            tmp
-        };
-    }
-}
-
 
 pub fn main() -> ! {
-    //let hstdout = hio::hstdout().unwrap();
     //let mut logger = Logger { hstdout };
 
     // debug!(logger, "Hello, world!");
-    // dhprintln!("hello");
 
     //logger.log(address as u8);
     
@@ -92,12 +56,15 @@ pub fn main() -> ! {
     systick.enable();
     let gpiob = Gpio::new(0x4002_0400);
     let gpioc = Gpio::new(0x4002_0800);
+    let gpiod = Gpio::new(0x40020c00);
     let exti = Exti::new(0x4001_3C00);
     let syscfg = Syscfg::new(0x4001_3800);
+    // For LED
     unsafe {
         gpiob.get_registers_ref().moder.modify(|val| (val | 0b1 | (0b1 << 14)));
         gpiob.get_registers_ref().bsrr.write(0x1);
     }
+    // For button
     unsafe {
         gpioc.get_registers_ref().pupdr.modify(|val| (val | (0b10 << 26)));
         syscfg.exticr4.write(0b0010 << 4);
@@ -106,9 +73,14 @@ pub fn main() -> ! {
         exti.rtsr.modify(|val| (val | (0b1 << 13)));
         exti.imr.modify(|val| (val | (0b1 << 13)));
     }
+    // For usart
+    unsafe {
+        gpiod.get_registers_ref().moder.write((0x2 << 16) | (0x2 << 18));
+        gpiod.get_registers_ref().afrh.write(0x7 | (0x7 << 4));
+    }
     let nvic = Nvic::new();
     for c in "hello world".chars() {
-        serial.write(c);
+        serial.write(c).unwrap();
     }
     // Dummy code to prevent optimizing
     let mut scheduler = SimpleScheduler::create();
@@ -123,16 +95,8 @@ pub fn main() -> ! {
     interrupt_manager.register(IrqId::EXTI15_10, nothing);
     let mut kernel = Kernel::create(scheduler, serial, interrupt_manager);
     kernel.run();
-
-    // debug!(logger, "Goodbye");
-    //dhprintln!("goodbye");
-
-    debug::exit(debug::EXIT_SUCCESS);
-
-    loop {}
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn app_main(_r0: usize, _r1: usize, _r2: usize) -> ! {
     let message: &str = "app_main";
     let message_ptr = message.as_ptr();
@@ -196,7 +160,7 @@ pub unsafe extern "C" fn tick(_r0: usize, _r1: usize, _r2: usize) -> ! {
 
 pub fn serial_loopback() {
     let mut serial = Serial::usart3();
-    serial.read().map(|c| serial.write(c));
+    serial.read().map(|c| serial.write(c).unwrap()).unwrap();
 }
 
 pub fn nothing() {
@@ -205,7 +169,7 @@ pub fn nothing() {
     unsafe {
         exti.pr.write(0x1 << 13);
         for c in "pressed\n".chars() {
-            serial.write(c);
+            serial.write(c).unwrap();
         }
     }
 }

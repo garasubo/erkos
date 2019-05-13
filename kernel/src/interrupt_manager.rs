@@ -1,11 +1,11 @@
-use device::nvic::Nvic;
+use arch::nvic::Nvic;
 use rt::Vector;
-use device::IRQS;            
+use device::irq::IRQS;            
 use core::mem;
 use crate::process_list::{ProcessList, ProcessListItem};
 
 struct InterruptHandler<'a> {
-    id: IrqId,
+    id: u32,
     func: fn(),
     waiting: ProcessList<'a>,
 }
@@ -29,17 +29,17 @@ impl<'a> InterruptManager<'a> {
         }
     }
 
-    pub fn register(&mut self, id: IrqId, func: fn()) {
+    pub fn register(&mut self, id: u32, func: fn()) {
         if self.handler_count >= 10 {
             panic!("limit exceed");
         }        
         unsafe { IRQS[id as usize] = Vector { handler: DefaultIrqHandler }; }
-        self.nvic.enable(id as u32);
+        self.nvic.enable(id);
         self.handlers[self.handler_count] = InterruptHandler { id, func, waiting: ProcessList::new() };
         self.handler_count += 1;
     }
 
-    pub fn push_wait(&mut self, tar_id: IrqId, item: &'a mut ProcessListItem<'a>) {
+    pub fn push_wait(&mut self, tar_id: u32, item: &'a mut ProcessListItem<'a>) {
         for i in 0..self.handler_count {
             let id = self.handlers[i].id;
             if id == tar_id {
@@ -65,7 +65,6 @@ impl<'a> InterruptManager<'a> {
     }
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn DefaultIrqHandler() {
     asm!(
         "
@@ -95,21 +94,4 @@ pub unsafe extern "C" fn DefaultIrqHandler() {
         "
     ::::"volatile");
     
-}
-
-#[repr(u32)]
-#[derive(Copy, Clone, PartialEq)]
-pub enum IrqId {
-    USART3 = 39,
-    EXTI15_10 = 40,
-}
-
-impl IrqId {
-    pub fn from_u32(x: u32) -> Option<IrqId> {
-        match x {
-            39 => Some(IrqId::USART3),
-            40 => Some(IrqId::EXTI15_10),
-            _ => None,
-        }
-    }
 }

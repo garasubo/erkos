@@ -9,12 +9,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "app"
 version = "0.1.0"
 dependencies = [
+ "arch 0.1.0",
  "cortex-m-semihosting 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "device 0.1.0",
  "embedded-hal 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "kernel 0.1.0",
  "log 0.1.0",
  "rt 0.1.0",
+]
+
+[[package]]
+name = "arch"
+version = "0.1.0"
+dependencies = [
+ "volatile-register 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -67,6 +75,7 @@ dependencies = [
 name = "kernel"
 version = "0.1.0"
 dependencies = [
+ "arch 0.1.0",
  "device 0.1.0",
  "embedded-hal 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rt 0.1.0",

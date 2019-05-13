@@ -5,6 +5,7 @@ authors = ["garasubo <garasubo@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+arch = { path = "../arch" }
 device = { path = "../device" }
 rt = { path = "../rt" }
 log = { path = "../log" }

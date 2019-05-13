@@ -1,4 +1,5 @@
 extern crate embedded_hal as hal;
+use core::fmt::Debug;
 use vcell::VolatileCell;
 use volatile_register::RW;
 
@@ -8,6 +9,12 @@ pub struct Serial<U> { usart: U }
 
 pub enum Error {
     Overrun,
+}
+
+impl Debug for Error {
+    fn fmt(&self, _: &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> {
+        Ok(())
+    }
 }
 
 pub struct Usart {
@@ -79,25 +86,7 @@ impl hal::serial::Write<char> for Serial<Usart> {
 
 impl Serial<Usart> {
     pub fn usart3() -> Serial<Usart> {
-        let gpio = Gpio::new(0x40020c00);
-        let registers = gpio.get_registers_ref();
-        unsafe {
-            registers.moder.write((0x2 << 16) | (0x2 << 18));
-            registers.afrh.write(0x7 | (0x7 << 4));
-        }
-        /*
-        // GPIOD
-        gpio.deref().moder.modify(|_, w| {
-            w.moder8().bits(0x2);
-            w.moder9().bits(0x2)
-        }); 
-        gpio.deref().afrh.modify(|_, w| unsafe {
-            w.afrh8().bits(0x7);
-            w.afrh9().bits(0x7)
-        });
-        */
         // f = 16MHz, baud rate = 9600 BPS
-
         let usart = Usart::new(0x40004800);
         let registers = usart.get_registers_ref();
         unsafe {
