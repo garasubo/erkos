@@ -4,18 +4,17 @@ use crate::syscall_id;
 use arch::StackFrame;
 use core::slice::from_raw_parts;
 use core::cell::RefCell;
-use device::serial::{Usart, Serial};
 use embedded_hal::serial::Write;
 use rt::SYSCALL_FIRED;
 
-pub struct Kernel<'a, S> {
+pub struct Kernel<'a, S, W> {
     scheduler: RefCell<S>,
     interrupt_manager: InterruptManager<'a>,
-    serial: RefCell<Serial<Usart>>,
+    serial: RefCell<W>,
 }
 
-impl<'a, S> Kernel<'a, S> where S: Scheduler<'a> {
-    pub fn create(scheduler: S, serial: Serial<Usart>, interrupt_manager: InterruptManager) -> Kernel<S> {
+impl<'a, S, W> Kernel<'a, S, W> where S: Scheduler<'a>, W: Write<char> {
+    pub fn create(scheduler: S, serial: W, interrupt_manager: InterruptManager) -> Kernel<S, W> {
         Kernel {
             scheduler: RefCell::new(scheduler),
             serial: RefCell::new(serial),
@@ -64,7 +63,7 @@ impl<'a, S> Kernel<'a, S> where S: Scheduler<'a> {
                             let arg1 = unsafe { from_raw_parts(base_frame.r1 as *const u8, arg2) };
 
                             for i in 0..arg2 {
-                                serial.write(arg1[i] as char).unwrap();
+                                serial.write(arg1[i] as char);
                             }
                         },
                         syscall_id::YIELD => {

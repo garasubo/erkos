@@ -1,8 +1,11 @@
 use arch::nvic::Nvic;
 use rt::Vector;
-use device::irq::IRQS;            
 use core::mem;
 use crate::process_list::{ProcessList, ProcessListItem};
+
+extern "C" {
+    static mut IRQS: [Vector; 240];
+}
 
 struct InterruptHandler<'a> {
     id: u32,

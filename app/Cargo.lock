@@ -76,7 +76,6 @@ name = "kernel"
 version = "0.1.0"
 dependencies = [
  "arch 0.1.0",
- "device 0.1.0",
  "embedded-hal 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rt 0.1.0",
  "util 0.1.0",

@@ -6,7 +6,6 @@ edition = "2018"
 
 [dependencies]
 arch = { path = "../arch" }
-device = { path = "../device" }
 util = { path = "../util" }
 rt = { path = "../rt" }
 embedded-hal = "0.2.2"
