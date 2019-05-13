@@ -72,6 +72,7 @@ macro_rules! entry {
     }
 }
 
+#[repr(C)]
 pub union Vector {
     pub reserved: u32,
     pub handler: unsafe extern "C" fn(),

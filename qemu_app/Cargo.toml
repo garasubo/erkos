@@ -1,0 +1,13 @@
+[package]
+name = "qemu_app"
+version = "0.1.0"
+authors = ["garasubo <garasubo@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+arch = { path = "../arch" }
+rt = { path = "../rt" }
+kernel = { path = "../kernel" }
+cortex-m-semihosting = "0.3.2"
+embedded-hal = "0.2.2"
+nb = "0.1.2"
