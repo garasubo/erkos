@@ -67,7 +67,7 @@ impl<'a, S, W> Kernel<'a, S, W> where S: Scheduler<'a>, W: Write<char> {
                             }
                         },
                         syscall_id::YIELD => {
-                            unsafe { SYSTICK_FIRED = 1 };
+                            unsafe { SHOULD_DISPATCH = 1 };
                         },
                         syscall_id::WAIT_IRQ => {
                             let arg1 = base_frame.r1;
@@ -93,10 +93,10 @@ impl<'a, S, W> Kernel<'a, S, W> where S: Scheduler<'a>, W: Write<char> {
             sched.resume_list(&mut released_list);
 
             unsafe { 
-                if SYSTICK_FIRED > 0 {
+                if SHOULD_DISPATCH > 0 {
                     sched.resume_waiting();
                     sched.schedule_next();
-                    SYSTICK_FIRED = 0;
+                    SHOULD_DISPATCH = 0;
                 }
             }
         }
@@ -104,7 +104,7 @@ impl<'a, S, W> Kernel<'a, S, W> where S: Scheduler<'a>, W: Write<char> {
 }
 
 #[no_mangle]
-pub static mut SYSTICK_FIRED: u32 = 0;
+pub static mut SHOULD_DISPATCH: u32 = 0;
 
 #[no_mangle]
 pub unsafe extern "C" fn SysTick() {
@@ -119,7 +119,7 @@ pub unsafe extern "C" fn SysTick() {
         movw lr, #0xfff9
         movt lr, #0xffff
       from_kernel:
-        ldr r0, =SYSTICK_FIRED
+        ldr r0, =SHOULD_DISPATCH
         mov r1, #1
         str r1, [r0, #0]
         "
