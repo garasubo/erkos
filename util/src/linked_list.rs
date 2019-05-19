@@ -76,7 +76,7 @@ impl<'a, T> LinkedList<'a, T> {
     }
 
     pub fn head_mut(&mut self) -> Option<&mut &'a mut ListItem<'a, T>> {
-        self.head.iter_mut().next()
+        self.head.as_mut()
     }
 
     pub fn join(&mut self, target: &mut LinkedList<'a, T>) {

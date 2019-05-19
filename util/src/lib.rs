@@ -2,6 +2,7 @@
 #![crate_type = "rlib"]
 
 pub mod linked_list;
+pub mod rb_tree;
 
 // copied from https://github.com/tock/tock
 macro_rules! static_init {
