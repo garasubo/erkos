@@ -1,7 +1,4 @@
-enum Color {
-    RED,
-    BLACK,
-}
+use core::mem;
 
 struct Node<'a, K, V> {
     key: K,
@@ -9,7 +6,6 @@ struct Node<'a, K, V> {
     parent: Option<*mut Node<'a, K, V>>,
     left: Option<&'a mut Node<'a, K, V>>,
     right: Option<&'a mut Node<'a, K, V>>,
-    color: Color,
 }
 
 impl<'a, K, V> Node<'a, K, V> {
@@ -20,19 +16,30 @@ impl<'a, K, V> Node<'a, K, V> {
             parent: None,
             left: None,
             right: None,
-            color: Color::RED,
         }
+    }
+
+    fn rotate(&mut self) -> &mut Node<'a, K, V> {
+        self
+    }
+
+    fn is_same(&self, node: &Node<'a, K, V>) -> bool {
+        (self as *const Node<'a, K, V>) == (node as *const Node<'a, K, V>)
+    }
+
+    fn get_parent_mut(&self) -> Option<&'a mut Node<'a, K, V>> {
+        self.parent.map(|ptr| unsafe { &mut (*ptr) })
     }
 }
 
-struct RbTree<'a, K, V> {
+struct BinaryTree<'a, K, V> {
     head: Option<&'a mut Node<'a, K, V>>,
 }
 
 // TODO: implement rotate
-impl<'a, K, V> RbTree<'a, K, V> where K: Ord {
-    pub fn new() -> RbTree<'a, K, V> {
-        RbTree { head: None }
+impl<'a, K, V> BinaryTree<'a, K, V> where K: Ord {
+    pub fn new() -> BinaryTree<'a, K, V> {
+        BinaryTree { head: None }
     }
 
     pub fn get(&self, key: K) ->  Option<&V> {
@@ -61,7 +68,6 @@ impl<'a, K, V> RbTree<'a, K, V> where K: Ord {
 
     pub fn insert(&mut self, node: &'a mut Node<'a, K, V>) {
         if self.head.is_none() {
-            node.color = Color::BLACK;
             self.head.replace(node);
         } else {
             let mut current = self.head.as_mut().unwrap();
@@ -86,23 +92,42 @@ impl<'a, K, V> RbTree<'a, K, V> where K: Ord {
             }
         }
     }
+
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use core::cell::{RefMut, RefCell};
+    use rand::{Rng, StdRng, SeedableRng};
+    use array_init::array_init;
 
     #[test]
     fn test_simple() {
-        let mut rbtree = RbTree::new();
-        assert!(rbtree.get(0).is_none());
+        let mut btree = BinaryTree::new();
+        assert!(btree.get(0).is_none());
         let mut node1 = Node::new(1, "hello");
-        rbtree.insert(&mut node1);
-        assert_eq!(rbtree.get(1).unwrap(), &"hello");
+        btree.insert(&mut node1);
+        assert_eq!(btree.get(1).unwrap(), &"hello");
         let mut node2 = Node::new(2, "world");
-        rbtree.insert(&mut node2);
-        assert_eq!(rbtree.get(1).unwrap(), &"hello");
-        assert_eq!(rbtree.get(2).unwrap(), &"world");
+        btree.insert(&mut node2);
+        assert_eq!(&"hello", btree.get(1).unwrap());
+        assert_eq!(&"world", btree.get(2).unwrap());
     }
 
+    #[test]
+    fn test_random() {
+        let seed: &[_] = &[1, 2, 3, 4];
+        let mut rng: StdRng = SeedableRng::from_seed(seed);
+        let mut nodes: [Node<usize, usize>; 100]  = array_init(|i| Node::new(i, i));
+        rng.shuffle(&mut nodes);
+        let mut btree = BinaryTree::new();
+        for i in 0..100 {
+            let node: *mut Node<usize,usize> = &mut nodes[i] as *mut Node<usize,usize>;
+            unsafe { btree.insert(&mut (*node)) };
+        }
+        for i in 0..100 {
+            assert_eq!(i, *(btree.get(i).unwrap()));
+        }
+    }
 }
