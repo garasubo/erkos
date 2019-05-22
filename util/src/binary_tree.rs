@@ -122,9 +122,9 @@ mod tests {
         let mut nodes: [Node<usize, usize>; 100]  = array_init(|i| Node::new(i, i));
         rng.shuffle(&mut nodes);
         let mut btree = BinaryTree::new();
-        for i in 0..100 {
-            let node: *mut Node<usize,usize> = &mut nodes[i] as *mut Node<usize,usize>;
-            unsafe { btree.insert(&mut (*node)) };
+        
+        for node in nodes.iter_mut() {
+            btree.insert(node);
         }
         for i in 0..100 {
             assert_eq!(i, *(btree.get(i).unwrap()));
