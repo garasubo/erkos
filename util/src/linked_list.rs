@@ -1,14 +1,15 @@
 use core::ops::{Deref, DerefMut};
+use core::ptr::NonNull;
 
 pub struct ListItem<'a, T> {
     item: T,
     next: Option<&'a mut ListItem<'a, T>>,
-    prev: Option<*mut ListItem<'a, T>>,
+    prev: Option<NonNull<ListItem<'a, T>>>,
 }
 
 pub struct LinkedList<'a, T> {
     head: Option<&'a mut ListItem<'a, T>>,
-    last: Option<*mut ListItem<'a, T>>,
+    last: Option<NonNull<ListItem<'a, T>>>,
 }
 
 impl<'a, T> Deref for ListItem<'a, T> {
@@ -61,17 +62,17 @@ impl<'a, T> LinkedList<'a, T> {
 
     pub fn push(&mut self, item: &'a mut ListItem<'a, T>) {
         if self.last.is_none() {
-            let item_ptr = item as *mut ListItem<T>;
+            let item_ptr = unsafe { NonNull::new_unchecked(item as *mut ListItem<T>) };
             item.prev = None;
             item.next = None;
             self.last.replace(item_ptr);
             self.head.replace(item);
         } else {
-            let last_ptr = self.last.unwrap();
-            let item_ptr = item as *mut ListItem<T>;
+            let mut last_ptr = self.last.unwrap();
+            let item_ptr = unsafe { NonNull::new_unchecked(item as *mut ListItem<T>) };
             self.last.replace(item_ptr);
             item.prev.replace(last_ptr);
-            unsafe { (*last_ptr).next.replace(item); }
+            unsafe { last_ptr.as_mut().next.replace(item); }
         }
     }
 
@@ -87,10 +88,10 @@ impl<'a, T> LinkedList<'a, T> {
             let mut tar_head = target.head.take();
             if tar_head.is_some() {
                 let tar_head_item = tar_head.iter_mut().next().unwrap();
-                let last_ptr = self.last.unwrap();
+                let mut last_ptr = self.last.unwrap();
                 tar_head_item.prev.replace(last_ptr);
                 unsafe {
-                    (*last_ptr).next = tar_head;
+                    last_ptr.as_mut().next = tar_head;
                 }
                 self.last = target.last.take();
             }

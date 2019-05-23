@@ -1,9 +1,10 @@
 use core::mem;
+use core::ptr::NonNull;
 
 struct Node<'a, K, V> {
     key: K,
     value: V,
-    parent: Option<*mut Node<'a, K, V>>,
+    parent: Option<NonNull<Node<'a, K, V>>>,
     left: Option<&'a mut Node<'a, K, V>>,
     right: Option<&'a mut Node<'a, K, V>>,
 }
@@ -27,8 +28,8 @@ impl<'a, K, V> Node<'a, K, V> {
         (self as *const Node<'a, K, V>) == (node as *const Node<'a, K, V>)
     }
 
-    fn get_parent_mut(&self) -> Option<&'a mut Node<'a, K, V>> {
-        self.parent.map(|ptr| unsafe { &mut (*ptr) })
+    fn get_parent_mut(&mut self) -> Option<&mut Node<'a, K, V>> {
+        self.parent.as_mut().map(|ptr| unsafe {  ptr.as_mut() })
     }
 }
 
@@ -74,7 +75,8 @@ impl<'a, K, V> BinaryTree<'a, K, V> where K: Ord {
             loop {
                 if current.key > node.key {
                     if current.right.is_none() {
-                        node.parent.replace(*current as *mut Node<'a, K, V>);
+                        let np = unsafe {NonNull::new_unchecked(*current as *mut Node<'a, K, V>)};
+                        node.parent.replace(np);
                         current.right.replace(node);
                         break;
                     } else {
@@ -82,7 +84,8 @@ impl<'a, K, V> BinaryTree<'a, K, V> where K: Ord {
                     }
                 } else {
                     if current.left.is_none() {
-                        node.parent.replace(*current as *mut Node<'a, K, V>);
+                        let np = unsafe {NonNull::new_unchecked(*current as *mut Node<'a, K, V>)};
+                        node.parent.replace(np);
                         current.left.replace(node);
                         break;
                     } else {
@@ -92,7 +95,6 @@ impl<'a, K, V> BinaryTree<'a, K, V> where K: Ord {
             }
         }
     }
-
 }
 
 #[cfg(test)]
