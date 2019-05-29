@@ -10,6 +10,19 @@ pub struct ListItem<'a, T> {
 pub struct LinkedList<'a, T> {
     head: Option<&'a mut ListItem<'a, T>>,
     last: Option<NonNull<ListItem<'a, T>>>,
+    len: usize,
+}
+
+pub struct Iter<'a, T> {
+    head: Option<NonNull<ListItem<'a, T>>>,
+    last: Option<NonNull<ListItem<'a, T>>>,
+    len: usize,
+}
+
+pub struct IterMut<'a, T> {
+    head: Option<NonNull<ListItem<'a, T>>>,
+    last: Option<NonNull<ListItem<'a, T>>>,
+    len: usize,
 }
 
 impl<'a, T> Deref for ListItem<'a, T> {
@@ -31,6 +44,7 @@ impl<'a, T> LinkedList<'a, T> {
         LinkedList {
             head: None,
             last: None,
+            len: 0,
         }
     }
 
@@ -74,6 +88,7 @@ impl<'a, T> LinkedList<'a, T> {
             item.prev.replace(last_ptr);
             unsafe { last_ptr.as_mut().next.replace(item); }
         }
+        self.len += 1;
     }
 
     pub fn head_mut(&mut self) -> Option<&mut &'a mut ListItem<'a, T>> {
@@ -96,6 +111,63 @@ impl<'a, T> LinkedList<'a, T> {
                 self.last = target.last.take();
             }
         }
+        self.len += target.len;
+    }
+
+    pub fn iter(&self) -> Iter<'a, T> {
+        Iter {
+            head: self.head.map(|item| unsafe { NonNull::new_unchecked(item as *mut ListItem<T>)}),
+            last: self.last,
+            len: self.len,
+        }
+    }
+}
+
+impl<'a, T> Iterator for Iter<'a, T> {
+    type Item = &'a T;
+     
+    fn next(&mut self) -> Option<&'a T> {
+        if self.len == 0 {
+            None
+        } else {
+            self.head.map(|ptr| unsafe {
+                let node = &mut *ptr.as_ptr();
+                self.len -= 1;
+                self.head = node.next.as_mut().map(|item| {
+                    NonNull::new_unchecked(*item as *mut ListItem<T>)
+                });
+                &node.item
+            })
+
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.len, Some(self.len))
+    }
+}
+
+impl<'a, T> Iterator for IterMut<'a, T> {
+    type Item = &'a mut T;
+     
+    fn next(&mut self) -> Option<&'a mut T> {
+        if self.len == 0 {
+            None
+        } else {
+            self.head.map(|ptr| unsafe {
+                let node = &mut *ptr.as_ptr();
+                self.len -= 1;
+                self.head = node.next.as_mut().map(|item| {
+                    NonNull::new_unchecked(*item as *mut ListItem<T>)
+                });
+                &mut node.item
+            })
+
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.len, Some(self.len))
     }
 }
 
