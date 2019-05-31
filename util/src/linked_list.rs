@@ -14,14 +14,12 @@ pub struct LinkedList<'a, T> {
 }
 
 pub struct Iter<'a, T> {
-    head: Option<NonNull<ListItem<'a, T>>>,
-    last: Option<NonNull<ListItem<'a, T>>>,
+    head: Option<*const ListItem<'a, T>>,
     len: usize,
 }
 
 pub struct IterMut<'a, T> {
     head: Option<NonNull<ListItem<'a, T>>>,
-    last: Option<NonNull<ListItem<'a, T>>>,
     len: usize,
 }
 
@@ -116,8 +114,14 @@ impl<'a, T> LinkedList<'a, T> {
 
     pub fn iter(&self) -> Iter<'a, T> {
         Iter {
-            head: self.head.map(|item| unsafe { NonNull::new_unchecked(item as *mut ListItem<T>)}),
-            last: self.last,
+            head: self.head.as_ref().map(|item| *item as *const ListItem<T>),
+            len: self.len,
+        }
+    }
+    
+    pub fn iter_mut(&mut self) -> IterMut<'a, T> {
+        IterMut {
+            head: self.head.as_mut().map(|item| unsafe { NonNull::new_unchecked(*item as *mut ListItem<T>) }),
             len: self.len,
         }
     }
@@ -130,11 +134,11 @@ impl<'a, T> Iterator for Iter<'a, T> {
         if self.len == 0 {
             None
         } else {
-            self.head.map(|ptr| unsafe {
-                let node = &mut *ptr.as_ptr();
+            self.head.map(|item| unsafe {
+                let node = &(*item);
                 self.len -= 1;
-                self.head = node.next.as_mut().map(|item| {
-                    NonNull::new_unchecked(*item as *mut ListItem<T>)
+                self.head = node.next.as_ref().map(|item| {
+                    *item as *const ListItem<T>
                 });
                 &node.item
             })
@@ -196,6 +200,41 @@ mod tests {
         let head: &u32 = list.pop().unwrap();
         assert_eq!(1, *head);
         assert!(list.is_empty());
+    }
+
+    #[test]
+    fn test_iter() {
+        let mut item1 = ListItem::create(9);
+        let mut item2 = ListItem::create(1);
+        let mut item3 = ListItem::create(3);
+        let mut list = LinkedList::new();
+        list.push(&mut item1);
+        list.push(&mut item2);
+        list.push(&mut item3);
+        let mut expected = [9,1,3];
+        for (i, item) in list.iter().enumerate() {
+            assert_eq!(expected[i], *item);
+        }
+    }
+
+    #[test]
+    fn test_iter_mut() {
+        let mut item1 = ListItem::create(7);
+        let mut item2 = ListItem::create(5);
+        let mut item3 = ListItem::create(3);
+        let mut list = LinkedList::new();
+        list.push(&mut item1);
+        list.push(&mut item2);
+        list.push(&mut item3);
+        let mut expected = [7,5,3];
+        let mut next = [3,1,5];
+        for (i, item) in list.iter_mut().enumerate() {
+            assert_eq!(expected[i], *item);
+            *item += next[i];
+        }
+        for (i, item) in list.iter().enumerate() {
+            assert_eq!(expected[i] + next[i], *item);
+        }
     }
     
     #[test]
