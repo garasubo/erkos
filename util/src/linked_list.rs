@@ -211,7 +211,7 @@ mod tests {
         list.push(&mut item1);
         list.push(&mut item2);
         list.push(&mut item3);
-        let mut expected = [9,1,3];
+        let expected = [9,1,3];
         for (i, item) in list.iter().enumerate() {
             assert_eq!(expected[i], *item);
         }
@@ -226,8 +226,8 @@ mod tests {
         list.push(&mut item1);
         list.push(&mut item2);
         list.push(&mut item3);
-        let mut expected = [7,5,3];
-        let mut next = [3,1,5];
+        let expected = [7,5,3];
+        let next = [3,1,5];
         for (i, item) in list.iter_mut().enumerate() {
             assert_eq!(expected[i], *item);
             *item += next[i];
