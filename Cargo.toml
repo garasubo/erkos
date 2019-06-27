@@ -1,0 +1,12 @@
+[workspace]
+members = [
+    "app",
+    "arch",
+    "device",
+    "kernel",
+    "log",
+    "qemu_app",
+    "rt",
+    "util",
+]
+exclude = [".cargo"]
