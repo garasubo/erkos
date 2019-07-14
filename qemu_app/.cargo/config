@@ -1,8 +1,6 @@
 [target.thumbv7m-none-eabi]
 rustflags = [
     "-C", "link-arg=-Tdevice.ld",
-    "-C", "link-arg=-Tlink.ld",
-    "-C", "link-arg=-Tlog.ld",
 ]
 runner = "qemu-system-arm -cpu cortex-m3 -machine lm3s6965evb -nographic -semihosting-config enable=on,target=native -kernel"
 

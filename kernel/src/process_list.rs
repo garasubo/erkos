@@ -1,5 +1,5 @@
-use crate::process::Process;
+use crate::process_manager::ProcessId;
 use util::linked_list::{LinkedList, ListItem};
 
-pub type ProcessListItem<'a> = ListItem<'a, Process<'a>>;
-pub type ProcessList<'a> = LinkedList<'a, Process<'a>>;
+pub type ProcessListItem<'a> = ListItem<'a, ProcessId>;
+pub type ProcessList<'a> = LinkedList<'a, ProcessId>;

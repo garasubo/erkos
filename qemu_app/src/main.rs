@@ -16,6 +16,8 @@ use kernel::scheduler::{Scheduler};
 use kernel::process_list::ProcessListItem;
 use kernel::interrupt_manager::InterruptManager;
 use kernel::kernel::Kernel;
+use kernel::process_manager::{ProcessId, ProcessManager};
+use util::binary_tree::Node;
 
 entry!(main);
 
@@ -41,14 +43,16 @@ fn main() -> ! {
 
     let nvic = Nvic::new();
 
-    let mut scheduler = SimpleScheduler::create();
+    let mut scheduler = SimpleScheduler::new();
     let serial = SemihostSerial { hstdout };
     let interrupt_manager = InterruptManager::create(nvic);
+    let mut process_manager = ProcessManager::new();
     let process = process_create!(app_main, 1024);
-    let mut item = ProcessListItem::create(process);
+    let mut node = Node::new(ProcessId(0), process);
+    let mut item = ProcessListItem::create(process_manager.register(&mut node));
     scheduler.push(&mut item);
 
-    let mut kernel = Kernel::create(scheduler, serial, interrupt_manager);
+    let mut kernel = Kernel::create(scheduler, serial, interrupt_manager, process_manager);
 
     kernel.run()
 }

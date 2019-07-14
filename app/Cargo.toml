@@ -10,5 +10,6 @@ device = { path = "../device" }
 rt = { path = "../rt" }
 log = { path = "../log" }
 kernel = { path = "../kernel" }
+util = { path = "../util" }
 cortex-m-semihosting = "0.3.2"
 embedded-hal = "0.2.2"

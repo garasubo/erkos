@@ -1,33 +1,23 @@
 use core::option::Option;
+use core::ops::DerefMut;
 
-use crate::process_list::{ProcessList, ProcessListItem};
+use crate::process_manager::ProcessId;
+use crate::process_list::ProcessListItem;
 use super::{Scheduler, ExecResult};
-
+use util::linked_list::{LinkedList, ListItem};
 
 pub struct SimpleScheduler<'a> {
-    active: ProcessList<'a>,
-    waiting: ProcessList<'a>,
+    active: LinkedList<'a, ProcessId>,
+    waiting: LinkedList<'a, ProcessId>,
 }
 
 impl<'a> Scheduler<'a> for SimpleScheduler<'a> {
-    fn get_current_proc(&mut self) -> Option<&mut &'a mut ProcessListItem<'a>> {
-        self.active.head_mut()
+    fn get_current_proc(&mut self) -> Option<&mut ProcessId> {
+        self.active.head_mut().map(|item| (*item).deref_mut())
     }
     
     fn pop_current_proc(&mut self) -> Option<&'a mut ProcessListItem<'a>> {
         self.active.pop()
-    }
-
-    fn exec_current_proc(&mut self) -> ExecResult
-    {
-        if self.active.is_empty() {
-            ExecResult::Nothing
-        } else {
-            let process = &mut self.active.head_mut().unwrap();
-
-            process.execute();
-            ExecResult::Executed
-        }
     }
 
     fn schedule_next(&mut self) {
@@ -37,15 +27,15 @@ impl<'a> Scheduler<'a> for SimpleScheduler<'a> {
         }
     }
 
-    fn resume_list(&mut self, process_list: &mut ProcessList<'a>) {
+    fn resume_list(&mut self, process_list: &mut LinkedList<'a, ProcessId>) {
         self.active.join(process_list);
     }
 
-    fn push(&mut self, proc: &'a mut ProcessListItem<'a>) {
+    fn push(&mut self, proc: &'a mut ListItem<'a, ProcessId>) {
         self.active.push(proc);
     }
 
-    fn push_wait(&mut self, proc: &'a mut ProcessListItem<'a>) {
+    fn push_wait(&mut self, proc: &'a mut ListItem<'a, ProcessId>) {
         self.waiting.push(proc);
     }
 
@@ -55,10 +45,10 @@ impl<'a> Scheduler<'a> for SimpleScheduler<'a> {
 }
 
 impl<'a> SimpleScheduler<'a> {
-    pub fn create() -> SimpleScheduler<'a> {
+    pub fn new() -> SimpleScheduler<'a> {
         SimpleScheduler {
-            active: ProcessList::new(),
-            waiting: ProcessList::new(),
+            active: LinkedList::new(),
+            waiting: LinkedList::new(),
         }
     }
 

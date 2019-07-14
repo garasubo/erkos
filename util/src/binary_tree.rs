@@ -3,7 +3,7 @@ use core::ops::{Deref, DerefMut};
 use core::ptr::NonNull;
 
 pub struct Node<'a, K, V> {
-    item: (K, V),
+    pub item: (K, V),
     parent: Option<NonNull<Node<'a, K, V>>>,
     left: Option<&'a mut Node<'a, K, V>>,
     right: Option<&'a mut Node<'a, K, V>>,
@@ -72,13 +72,13 @@ impl<'a, K, V> BinaryTree<'a, K, V> where K: Ord {
         }
     }
 
-    pub fn get(&self, key: K) ->  Option<&V> {
+    pub fn get(&self, key: &K) ->  Option<&V> {
         if self.head.is_none() {
             None
         } else {
             let mut current = self.head.as_ref().unwrap();
-            while current.item.0 != key {
-                if current.item.0 < key {
+            while current.item.0 != *key {
+                if current.item.0 < *key {
                     if current.right.is_none() {
                         return None;
                     } else {
@@ -93,6 +93,30 @@ impl<'a, K, V> BinaryTree<'a, K, V> where K: Ord {
                 }
             }
             Some(&(current.item.1))
+        }
+    }
+
+    pub fn get_mut(&mut self, key: &K) ->  Option<&mut V> {
+        if self.head.is_none() {
+            None
+        } else {
+            let mut current = self.head.as_mut().unwrap();
+            while current.item.0 != *key {
+                if current.item.0 < *key {
+                    if current.right.is_none() {
+                        return None;
+                    } else {
+                        current = current.right.as_mut().unwrap();
+                    }
+                } else {
+                    if current.left.is_none() {
+                        return None;
+                    } else {
+                        current = current.left.as_mut().unwrap();
+                    }
+                }
+            }
+            Some(&mut (current.item.1))
         }
     }
 
@@ -250,14 +274,14 @@ mod tests {
     #[test]
     fn test_simple() {
         let mut btree = BinaryTree::new();
-        assert!(btree.get(0).is_none());
+        assert!(btree.get(&0).is_none());
         let mut node1 = Node::new(1, "hello");
         btree.insert(&mut node1);
-        assert_eq!(btree.get(1).unwrap(), &"hello");
+        assert_eq!(btree.get(&1).unwrap(), &"hello");
         let mut node2 = Node::new(2, "world");
         btree.insert(&mut node2);
-        assert_eq!(&"hello", btree.get(1).unwrap());
-        assert_eq!(&"world", btree.get(2).unwrap());
+        assert_eq!(&"hello", btree.get(&1).unwrap());
+        assert_eq!(&"world", btree.get(&2).unwrap());
     }
 
     #[test]
@@ -310,7 +334,7 @@ mod tests {
             btree.insert(node);
         }
         for i in 0..100 {
-            assert_eq!(i, *(btree.get(i).unwrap()));
+            assert_eq!(i, *(btree.get(&i).unwrap()));
         }
         for (i, (key, value)) in btree.iter().enumerate() {
             assert_eq!(&i, key);

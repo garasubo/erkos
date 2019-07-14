@@ -21,8 +21,10 @@ use kernel::process::Process;
 use kernel::scheduler::simple_scheduler::{SimpleScheduler};
 use kernel::scheduler::{Scheduler};
 use kernel::process_list::ProcessListItem;
+use kernel::process_manager::{ProcessManager, ProcessId};
 use kernel::interrupt_manager::InterruptManager;
 use kernel::kernel::Kernel;
+use util::binary_tree::Node;
 
 entry!(main);
 
@@ -82,18 +84,23 @@ pub fn main() -> ! {
     for c in "hello world".chars() {
         serial.write(c).unwrap();
     }
-    // Dummy code to prevent optimizing
-    let mut scheduler = SimpleScheduler::create();
-    let mut proc_item = ProcessListItem::create(process);
-    let mut tick_item = ProcessListItem::create(tick_process);
-    let mut button_item = ProcessListItem::create(button_process);
-    scheduler.push(&mut proc_item);
+    let mut scheduler = SimpleScheduler::new();
+    let mut process_manager = ProcessManager::new();
+    let mut proc_node = Node::new(ProcessId(0), process);
+    let mut tick_node = Node::new(ProcessId(0), tick_process);
+    let mut button_node = Node::new(ProcessId(0), button_process);
+    let mut process_item = ProcessListItem::create(process_manager.register(&mut proc_node));
+    let mut tick_item = ProcessListItem::create(process_manager.register(&mut tick_node));
+    let mut button_item = ProcessListItem::create(process_manager.register(&mut button_node));
+
+    scheduler.push(&mut process_item);
     scheduler.push(&mut tick_item);
     scheduler.push(&mut button_item);
+
     let mut interrupt_manager = InterruptManager::create(nvic);
     interrupt_manager.register(IrqId::USART3, serial_loopback);
     interrupt_manager.register(IrqId::EXTI15_10, nothing);
-    let mut kernel = Kernel::create(scheduler, serial, interrupt_manager);
+    let mut kernel = Kernel::create(scheduler, serial, interrupt_manager, process_manager);
     kernel.run();
 }
 
