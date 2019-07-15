@@ -23,8 +23,10 @@ use kernel::scheduler::{Scheduler};
 use kernel::process_list::ProcessListItem;
 use kernel::process_manager::{ProcessManager, ProcessId};
 use kernel::interrupt_manager::InterruptManager;
+use kernel::message_manager::MessageManager;
 use kernel::kernel::Kernel;
 use util::binary_tree::Node;
+use util::linked_list::ListItem;
 
 entry!(main);
 
@@ -100,7 +102,11 @@ pub fn main() -> ! {
     let mut interrupt_manager = InterruptManager::create(nvic);
     interrupt_manager.register(IrqId::USART3, serial_loopback);
     interrupt_manager.register(IrqId::EXTI15_10, nothing);
-    let mut kernel = Kernel::create(scheduler, serial, interrupt_manager, process_manager);
+
+    let mut message_buff: [ListItem<u32>; 32] = unsafe { core::mem::uninitialized() };
+    let message_manager = MessageManager::new(&mut message_buff);
+
+    let mut kernel = Kernel::create(scheduler, serial, interrupt_manager, process_manager, message_manager);
     kernel.run();
 }
 

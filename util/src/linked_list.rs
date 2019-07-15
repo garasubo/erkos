@@ -2,7 +2,7 @@ use core::ops::{Deref, DerefMut};
 use core::ptr::NonNull;
 
 pub struct ListItem<'a, T> {
-    item: T,
+    pub item: T,
     next: Option<&'a mut ListItem<'a, T>>,
     prev: Option<NonNull<ListItem<'a, T>>>,
 }

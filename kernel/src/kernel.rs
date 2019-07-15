@@ -1,5 +1,6 @@
 use crate::scheduler::Scheduler;
 use crate::interrupt_manager::InterruptManager;
+use crate::message_manager::MessageManager;
 use crate::process::Process;
 use crate::process_manager::{ProcessId, ProcessManager};
 use crate::syscall_id;
@@ -14,15 +15,23 @@ pub struct Kernel<'a, S, W> {
     interrupt_manager: InterruptManager<'a>,
     serial: RefCell<W>,
     process_manager: ProcessManager<'a, Process<'a>>,
+    message_manager: MessageManager<'a>,
 }
 
 impl<'a, S, W> Kernel<'a, S, W> where S: Scheduler<'a>, W: Write<char> {
-    pub fn create(scheduler: S, serial: W, interrupt_manager: InterruptManager<'a>, process_manager: ProcessManager<'a, Process<'a>>) -> Kernel<'a, S, W> {
+    pub fn create(
+        scheduler: S,
+        serial: W,
+        interrupt_manager: InterruptManager<'a>,
+        process_manager: ProcessManager<'a, Process<'a>>,
+        message_manager: MessageManager<'a>,
+    ) -> Kernel<'a, S, W> {
         Kernel {
             scheduler: RefCell::new(scheduler),
             serial: RefCell::new(serial),
             interrupt_manager,
             process_manager,
+            message_manager,
         }
     }
 
@@ -73,6 +82,29 @@ impl<'a, S, W> Kernel<'a, S, W> where S: Scheduler<'a>, W: Write<char> {
                                 },
                                 syscall_id::DORMANT => {
                                     sched.pop_current_proc().unwrap();
+                                },
+                                syscall_id::SEND_MESSAGE => {
+                                    let arg1 = base_frame.r1;
+                                    let arg2 = base_frame.r2;
+                                    let mut target = self.process_manager.get_mut(&ProcessId(arg1));
+                                    if target.is_none() {
+                                        base_frame.r0 = 0;
+                                    } else {
+                                        let result = self.message_manager.send_message(target.unwrap(), arg2);
+                                        base_frame.r0 = result as u32;
+                                    }
+                                    unimplemented!();
+                                },
+                                syscall_id::RECEIVE_MESSAGE => {
+                                    let mut target = self.process_manager.get_mut(item).unwrap();
+                                    let result = self.message_manager.receive_message(target);
+                                    if result.is_none() {
+                                        base_frame.r0 = 0;
+                                    } else {
+                                        base_frame.r0 = 1;
+                                        base_frame.r1 = result.unwrap();
+                                    }
+                                    unimplemented!();
                                 },
                                 _ => {
                                     // TODO: error handling

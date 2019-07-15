@@ -1,4 +1,5 @@
 use core::slice::from_raw_parts_mut;
+use util::linked_list::{LinkedList, ListItem};
 
 #[derive(PartialEq)]
 pub enum ProcessState {
@@ -12,6 +13,7 @@ pub struct Process<'a> {
     pub sp: *mut u8,
     pub regs: &'a [u32; 8],
     pub state: ProcessState,
+    pub message_queue: LinkedList<'a, u32>,
 }
 
 impl<'a> Process<'a> {
@@ -30,6 +32,7 @@ impl<'a> Process<'a> {
             sp: base_frame_ptr as *mut u8,
             regs: regs,
             state: ProcessState::DORMANT,
+            message_queue: LinkedList::new(),
         }
     }
 
