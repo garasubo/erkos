@@ -19,6 +19,7 @@ dependencies = [
  "kernel 0.1.0",
  "log 0.1.0",
  "rt 0.1.0",
+ "user 0.1.0",
  "util 0.1.0",
 ]
 
@@ -227,6 +228,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "typenum"
 version = "1.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "user"
+version = "0.1.0"
+dependencies = [
+ "kernel 0.1.0",
+]
 
 [[package]]
 name = "util"

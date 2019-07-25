@@ -93,7 +93,6 @@ impl<'a, S, W> Kernel<'a, S, W> where S: Scheduler<'a>, W: Write<char> {
                                         let result = self.message_manager.send_message(target.unwrap(), arg2);
                                         base_frame.r0 = result as u32;
                                     }
-                                    unimplemented!();
                                 },
                                 syscall_id::RECEIVE_MESSAGE => {
                                     let mut target = self.process_manager.get_mut(item).unwrap();
@@ -104,7 +103,6 @@ impl<'a, S, W> Kernel<'a, S, W> where S: Scheduler<'a>, W: Write<char> {
                                         base_frame.r0 = 1;
                                         base_frame.r1 = result.unwrap();
                                     }
-                                    unimplemented!();
                                 },
                                 _ => {
                                     // TODO: error handling

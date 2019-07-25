@@ -27,9 +27,11 @@ use kernel::message_manager::MessageManager;
 use kernel::kernel::Kernel;
 use util::binary_tree::Node;
 use util::linked_list::ListItem;
+use user::syscall::*;
 
 entry!(main);
 
+static mut TICK_PROCESS_ID: u32 = 0;
 
 pub fn main() -> ! {
     //let mut logger = Logger { hstdout };
@@ -41,6 +43,7 @@ pub fn main() -> ! {
     let process = process_create!(app_main, 1024);
     let tick_process = process_create!(tick, 512);
     let button_process = process_create!(button_callback, 256);
+    let serial_process = process_create!(serial_func, 256);
     let registers = RCC.get_registers_ref();
 
     unsafe {
@@ -91,13 +94,18 @@ pub fn main() -> ! {
     let mut proc_node = Node::new(ProcessId(0), process);
     let mut tick_node = Node::new(ProcessId(0), tick_process);
     let mut button_node = Node::new(ProcessId(0), button_process);
+    let mut serial_node = Node::new(ProcessId(0), serial_process);
     let mut process_item = ProcessListItem::create(process_manager.register(&mut proc_node));
-    let mut tick_item = ProcessListItem::create(process_manager.register(&mut tick_node));
+    let tick_process_id = process_manager.register(&mut tick_node);
+    unsafe { TICK_PROCESS_ID = tick_process_id.0; }
+    let mut tick_item = ProcessListItem::create(tick_process_id);
     let mut button_item = ProcessListItem::create(process_manager.register(&mut button_node));
+    let mut serial_item = ProcessListItem::create(process_manager.register(&mut serial_node));
 
     scheduler.push(&mut process_item);
     scheduler.push(&mut tick_item);
     scheduler.push(&mut button_item);
+    scheduler.push(&mut serial_item);
 
     let mut interrupt_manager = InterruptManager::create(nvic);
     interrupt_manager.register(IrqId::USART3, serial_loopback);
@@ -171,9 +179,22 @@ pub unsafe extern "C" fn tick(_r0: usize, _r1: usize, _r2: usize) -> ! {
     }
 }
 
-pub fn serial_loopback() {
+pub unsafe extern "C" fn serial_func() -> ! {
     let mut serial = Serial::usart3();
-    serial.read().map(|c| serial.write(c).unwrap()).unwrap();
+    loop {
+        wait_for_interrupt(IrqId::USART3);
+        serial.read().map(|c| {
+            serial.write(c).unwrap();
+            if c == '\n' {
+                send_message(TICK_PROCESS_ID, 1)
+            }
+        });
+    }
+}
+
+pub fn serial_loopback() {
+    // let mut serial = Serial::usart3();
+    // serial.read().map(|c| serial.write(c).unwrap()).unwrap();
 }
 
 pub fn nothing() {
