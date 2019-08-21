@@ -159,9 +159,15 @@ pub unsafe extern "C" fn button_callback() -> ! {
 }
 
 pub unsafe extern "C" fn tick(_r0: usize, _r1: usize, _r2: usize) -> ! {
+    let gpiob = Gpio::new(0x4002_0400);
+    let mut status = false;
     loop {
-        let gpiob = Gpio::new(0x4002_0400);
-        gpiob.get_registers_ref().bsrr.write(0x1 << 7);
+        if status {
+            gpiob.get_registers_ref().bsrr.write(0x1 << 23);
+        } else {
+            gpiob.get_registers_ref().bsrr.write(0x1 << 7);
+        }
+        status = !status;
         asm!(
             "
             mov r0, #4
@@ -173,13 +179,6 @@ pub unsafe extern "C" fn tick(_r0: usize, _r1: usize, _r2: usize) -> ! {
                 wait_for_event();
             }
         }
-        gpiob.get_registers_ref().bsrr.write(0x1 << 23);
-        asm!(
-            "
-            mov r0, #4
-            svc 1
-            "
-        :::"r0":"volatile");
     }
 }
 
