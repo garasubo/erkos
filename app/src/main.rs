@@ -161,7 +161,18 @@ pub unsafe extern "C" fn button_callback() -> ! {
 pub unsafe extern "C" fn tick(_r0: usize, _r1: usize, _r2: usize) -> ! {
     let gpiob = Gpio::new(0x4002_0400);
     let mut status = false;
+    let mut mode = 0;
     loop {
+        match receive_message() {
+            Some(command) => {
+                mode = command;
+            },
+            None => {}
+        }
+        if mode == 0 {
+            wait_for_event();
+            continue;
+        }
         if status {
             gpiob.get_registers_ref().bsrr.write(0x1 << 23);
         } else {
@@ -174,22 +185,31 @@ pub unsafe extern "C" fn tick(_r0: usize, _r1: usize, _r2: usize) -> ! {
             svc 1
             "
         :::"r0":"volatile");
-        if receive_message().is_some() {
-            while receive_message().is_none() {
-                wait_for_event();
-            }
-        }
     }
 }
 
 pub unsafe extern "C" fn serial_func() -> ! {
     let mut serial = Serial::usart3();
+    let mut buff = ['\0' as u8; 64];
+    let mut pos = 0;
     loop {
         wait_for_interrupt(IrqId::USART3);
         serial.read().map(|c| {
-            serial.write(c).unwrap();
             if c == '\n' {
-                send_message(TICK_PROCESS_ID, 1);
+                let command = &buff[0..pos];
+                if command == "blink".as_bytes() {
+                    send_message(TICK_PROCESS_ID, 1);
+                } else if command == "stop".as_bytes() {
+                    send_message(TICK_PROCESS_ID, 0);
+                }
+                pos = 0;
+                serial.write(c).unwrap();
+            } else {
+                if pos < buff.len() {
+                    buff[pos] = c as u8;
+                    pos += 1;
+                    serial.write(c).unwrap();
+                }
             }
         });
     }
