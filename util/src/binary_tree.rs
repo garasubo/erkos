@@ -95,6 +95,30 @@ impl<'a, K, V> BinaryTree<'a, K, V> where K: Ord {
             Some(&(current.item.1))
         }
     }
+    
+    pub fn borrow(&self, key: &K) ->  Option<&'a V> {
+        let mut result = None;
+        self.head.as_ref().map(|head| unsafe {
+            let mut current = (*head as *const Node<'a, K, V>).clone();
+            while (*current).item.0 != *key {
+                if (*current).item.0 < *key {
+                    if (*current).right.is_none() {
+                        return;
+                    } else {
+                        current = (*(*current).right.as_ref().unwrap()) as *const Node<'a, K, V>;
+                    }
+                } else {
+                    if (*current).left.is_none() {
+                        return;
+                    } else {
+                        current = (*(*current).left.as_ref().unwrap()) as *const Node<'a, K, V>;
+                    }
+                }
+            }
+            result = Some(&(*current).item.1);
+        });
+        result
+    }
 
     pub fn get_mut(&mut self, key: &K) ->  Option<&mut V> {
         if self.head.is_none() {
@@ -118,6 +142,30 @@ impl<'a, K, V> BinaryTree<'a, K, V> where K: Ord {
             }
             Some(&mut (current.item.1))
         }
+    }
+
+    pub fn borrow_mut(&mut self, key: &K) ->  Option<&'a mut V> {
+        let mut result = None;
+        self.head.as_mut().map(|head| unsafe {
+            let mut current = (*head as *mut Node<'a, K, V>).clone();
+            while (*current).item.0 != *key {
+                if (*current).item.0 < *key {
+                    if (*current).right.is_none() {
+                        return;
+                    } else {
+                        current = (*(*current).right.as_mut().unwrap()) as *mut Node<'a, K, V>;
+                    }
+                } else {
+                    if (*current).left.is_none() {
+                        return;
+                    } else {
+                        current = (*(*current).left.as_mut().unwrap()) as *mut Node<'a, K, V>;
+                    }
+                }
+            }
+            result = Some(&mut (*current).item.1);
+        });
+        result
     }
 
     pub fn insert(&mut self, node: &'a mut Node<'a, K, V>) {

@@ -1,4 +1,3 @@
-use crate::process_list::{ProcessList, ProcessListItem};
 use crate::process_manager::{ProcessManager, ProcessId};
 use crate::process::Process;
 use util::linked_list::{LinkedList, ListItem};
@@ -37,7 +36,7 @@ impl<'a> MessageManager<'a> {
             return None;
         }
 
-        let mut item = process.message_queue.pop().unwrap();
+        let item = process.message_queue.pop().unwrap();
         let result = Some(item.item);
 
         self.buff.push(item);

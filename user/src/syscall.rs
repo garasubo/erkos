@@ -1,6 +1,6 @@
 use kernel::syscall_id::*;
 
-pub fn send_message(id: u32, message: u32) {
+pub fn send_message(id: u32, message: u32) -> bool {
     let result: bool;
     unsafe {
         asm!(
@@ -13,6 +13,7 @@ pub fn send_message(id: u32, message: u32) {
         :"volatile"
         );
     }
+    result
 }
 
 pub fn receive_message() -> Option<u32> {
@@ -44,6 +45,18 @@ pub fn wait_for_interrupt(id: u32) {
             svc 1
             "
             ::"{r0}"(WAIT_IRQ), "{r1}"(id)
+            ::"volatile"
+        );
+    }
+}
+
+pub fn wait_for_event() {
+    unsafe{
+        asm!(
+            "
+            svc 1
+            "
+            ::"{r0}"(YIELD)
             ::"volatile"
         );
     }

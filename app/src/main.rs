@@ -28,17 +28,16 @@ use kernel::kernel::Kernel;
 use util::binary_tree::Node;
 use util::linked_list::ListItem;
 use user::syscall::*;
+use cortex_m_semihosting::hio::hstdout;
+use core::fmt::Write as CoreWrite;
 
 entry!(main);
 
 static mut TICK_PROCESS_ID: u32 = 0;
 
 pub fn main() -> ! {
-    //let mut logger = Logger { hstdout };
-
-    // debug!(logger, "Hello, world!");
-
-    //logger.log(address as u8);
+    // let mut stdout = hstdout().unwrap();
+    // write!(stdout, "Hello, world!").unwrap();
     
     let process = process_create!(app_main, 1024);
     let tick_process = process_create!(tick, 512);
@@ -169,6 +168,11 @@ pub unsafe extern "C" fn tick(_r0: usize, _r1: usize, _r2: usize) -> ! {
             svc 1
             "
         :::"r0":"volatile");
+        if receive_message().is_some() {
+            while receive_message().is_none() {
+                wait_for_event();
+            }
+        }
         gpiob.get_registers_ref().bsrr.write(0x1 << 23);
         asm!(
             "
@@ -186,7 +190,7 @@ pub unsafe extern "C" fn serial_func() -> ! {
         serial.read().map(|c| {
             serial.write(c).unwrap();
             if c == '\n' {
-                send_message(TICK_PROCESS_ID, 1)
+                send_message(TICK_PROCESS_ID, 1);
             }
         });
     }

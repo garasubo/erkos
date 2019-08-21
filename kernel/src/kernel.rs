@@ -15,7 +15,9 @@ pub struct Kernel<'a, S, W> {
     interrupt_manager: InterruptManager<'a>,
     serial: RefCell<W>,
     process_manager: ProcessManager<'a, Process<'a>>,
-    message_manager: MessageManager<'a>,
+    // process_manager: RefCell<ProcessManager<'a, Process<'a>>>,
+    message_manager: RefCell<MessageManager<'a>>,
+    //message_manager: MessageManager<'a>,
 }
 
 impl<'a, S, W> Kernel<'a, S, W> where S: Scheduler<'a>, W: Write<char> {
@@ -31,22 +33,27 @@ impl<'a, S, W> Kernel<'a, S, W> where S: Scheduler<'a>, W: Write<char> {
             serial: RefCell::new(serial),
             interrupt_manager,
             process_manager,
-            message_manager,
+            //process_manager: RefCell::new(process_manager),
+            message_manager: RefCell::new(message_manager),
+            //message_manager,
         }
     }
 
     pub fn run(&'a mut self) -> ! {
         unsafe { asm!("cpsid i" ::: "memory" : "volatile"); }
         let interrupt_manager = &mut self.interrupt_manager;
+        let process_manager = &mut self.process_manager;
         loop {
             let mut sched = self.scheduler.borrow_mut();
             let mut serial = self.serial.borrow_mut();
+            let mut message_manager = self.message_manager.borrow_mut();
+            //let mut process_manager = self.process_manager.borrow_mut();
             let current_id: Option<&mut ProcessId> = sched.get_current_proc();
 
             match current_id {
                 Some(item) => {
                     let mut syscall: Option<*const u32> = None;
-                    self.process_manager.get_mut(item).map(|process| {
+                    process_manager.get_mut(item).map(|process| {
                         process.execute();
                         unsafe {
                             if SYSCALL_FIRED > 0 {
@@ -86,22 +93,21 @@ impl<'a, S, W> Kernel<'a, S, W> where S: Scheduler<'a>, W: Write<char> {
                                 syscall_id::SEND_MESSAGE => {
                                     let arg1 = base_frame.r1;
                                     let arg2 = base_frame.r2;
-                                    let mut target = self.process_manager.get_mut(&ProcessId(arg1));
+                                    let target = process_manager.get_mut(&ProcessId(arg1));
                                     if target.is_none() {
                                         base_frame.r0 = 0;
                                     } else {
-                                        let result = self.message_manager.send_message(target.unwrap(), arg2);
-                                        base_frame.r0 = result as u32;
+                                        let result = message_manager.send_message(target.unwrap(), arg2);
+                                        base_frame.r0 = result.clone() as u32;
                                     }
                                 },
                                 syscall_id::RECEIVE_MESSAGE => {
-                                    let mut target = self.process_manager.get_mut(item).unwrap();
-                                    let result = self.message_manager.receive_message(target);
+                                    let result = message_manager.receive_message(process_manager.get_mut(item).unwrap());
                                     if result.is_none() {
                                         base_frame.r0 = 0;
                                     } else {
                                         base_frame.r0 = 1;
-                                        base_frame.r1 = result.unwrap();
+                                        base_frame.r1 = result.unwrap().clone();
                                     }
                                 },
                                 _ => {
