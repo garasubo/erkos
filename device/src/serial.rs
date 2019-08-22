@@ -2,10 +2,13 @@ extern crate embedded_hal as hal;
 use core::fmt::Debug;
 use vcell::VolatileCell;
 use volatile_register::RW;
+use crate::dma::{Stream3, DmaClient, Client};
 
-use crate::gpio::Gpio;
-
-pub struct Serial<U> { usart: U }
+pub struct Serial<U, Rx, Tx> {
+    usart: U,
+    rx_dma: Rx,
+    tx_dma: Tx,
+}
 
 pub enum Error {
     Overrun,
@@ -42,7 +45,7 @@ impl Usart {
     }
 }
 
-impl hal::serial::Read<char> for Serial<Usart> {
+impl<R, T> hal::serial::Read<char> for Serial<Usart, R, T> {
     type Error = Error;
 
     fn read(&mut self) -> nb::Result<char, Error> {
@@ -59,7 +62,7 @@ impl hal::serial::Read<char> for Serial<Usart> {
     }
 }
 
-impl hal::serial::Write<char> for Serial<Usart> {
+impl<R, T> hal::serial::Write<char> for Serial<Usart, R, T> {
     type Error = Error;
 
     fn write(&mut self, c: char) -> nb::Result<(), Error>{
@@ -84,8 +87,8 @@ impl hal::serial::Write<char> for Serial<Usart> {
     }
 }
 
-impl Serial<Usart> {
-    pub fn usart3() -> Serial<Usart> {
+impl Serial<Usart, (), ()> {
+    pub fn usart3() -> Serial<Usart, (), ()> {
         // f = 16MHz, baud rate = 9600 BPS
         let usart = Usart::new(0x40004800);
         let registers = usart.get_registers_ref();
@@ -94,6 +97,33 @@ impl Serial<Usart> {
             registers.cr1.write((1 << 5) | (1  << 3) | (1 << 2) | (1 << 13));
         }
 
-        Serial { usart }
+        Serial { usart, rx_dma: (), tx_dma: () }
+    }
+}
+
+impl Serial<Usart, (), DmaClient<Stream3>> {
+    pub fn usart3_tx_dma() -> Serial<Usart, (), DmaClient<Stream3>> {
+        // f = 16MHz, baud rate = 9600 BPS
+        let usart = Usart::new(0x40004800);
+        let registers = usart.get_registers_ref();
+        unsafe {
+            registers.brr.write(0x683);
+            registers.cr1.write((1 << 5) | (1  << 3) | (1 << 2) | (1 << 13));
+            // enable transmitter DMA 
+            registers.cr3.modify(|v| v | (1 << 7));
+        }
+
+        let tx_dma = DmaClient::dma1_stream3();
+
+        Serial { usart, rx_dma: (), tx_dma }
+    }
+    
+    pub fn send_buffer(&self, buffer: &'static [u8]) {
+        let registers = self.usart.get_registers_ref();
+        unsafe {
+            // clear tc
+            registers.sr.modify(|r| r & !(1 << 6));
+        }
+        self.tx_dma.transfer(buffer, 0x40004800 + 0x04, 0x04)
     }
 }

@@ -50,11 +50,11 @@ pub fn main() -> ! {
         registers.apb1enr.write(1 << 18);
         // enable SYSCFG
         registers.apb2enr.write(1 << 14);
-        // enable GPIOD and GPIOB and GPIOC
-        registers.ahb1enr.write((1 << 3) | (1 << 2)| (1 << 1));
+        // enable GPIOD and GPIOB and GPIOC and DMA1
+        registers.ahb1enr.write((1 << 3) | (1 << 2)| (1 << 1) | (1 << 21));
     }
 
-    let mut serial = Serial::usart3();
+    let mut serial = Serial::usart3_tx_dma();
     let systick = Systick::new();
     let val = systick.get_ticks_per_10ms();
     systick.clear_current();
@@ -85,9 +85,12 @@ pub fn main() -> ! {
         gpiod.get_registers_ref().afrh.write(0x7 | (0x7 << 4));
     }
     let nvic = Nvic::new();
+    serial.send_buffer("hello dma world\r\n".as_bytes());
+    /*
     for c in "hello world".chars() {
         serial.write(c).unwrap();
     }
+    */
     let mut scheduler = SimpleScheduler::new();
     let mut process_manager = ProcessManager::new();
     let mut proc_node = Node::new(ProcessId(0), process);
