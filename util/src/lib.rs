@@ -3,6 +3,7 @@
 
 pub mod linked_list;
 pub mod binary_tree;
+pub mod avl_tree;
 
 // copied from https://github.com/tock/tock
 macro_rules! static_init {

@@ -25,7 +25,7 @@ use kernel::process_manager::{ProcessManager, ProcessId};
 use kernel::interrupt_manager::InterruptManager;
 use kernel::message_manager::MessageManager;
 use kernel::kernel::Kernel;
-use util::binary_tree::Node;
+use util::avl_tree::Node;
 use util::linked_list::ListItem;
 use user::syscall::*;
 use cortex_m_semihosting::hio::hstdout;

@@ -1,17 +1,18 @@
-use util::binary_tree::{BinaryTree, Node};
+use util::avl_tree::{AvlTree, Node};
+use util::binary_tree::BinaryTree;
 
 #[derive(PartialOrd, PartialEq, Eq, Ord, Clone)]
 pub struct ProcessId(pub u32);
 
 pub struct ProcessManager<'a, P> {
-    map: BinaryTree<'a, ProcessId, P>,
+    map: AvlTree<'a, ProcessId, P>,
     count: u32,
 }
 
 impl<'a, P> ProcessManager<'a, P> {
     pub fn new() -> ProcessManager<'a, P> {
         ProcessManager {
-            map: BinaryTree::new(),
+            map: AvlTree::new(),
             count: 0,
         }
     }

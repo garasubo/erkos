@@ -17,7 +17,9 @@ use kernel::process_list::ProcessListItem;
 use kernel::interrupt_manager::InterruptManager;
 use kernel::kernel::Kernel;
 use kernel::process_manager::{ProcessId, ProcessManager};
-use util::binary_tree::Node;
+use kernel::message_manager::MessageManager;
+use util::linked_list::ListItem;
+use util::avl_tree::Node;
 
 entry!(main);
 
@@ -52,7 +54,9 @@ fn main() -> ! {
     let mut item = ProcessListItem::create(process_manager.register(&mut node));
     scheduler.push(&mut item);
 
-    let mut kernel = Kernel::create(scheduler, serial, interrupt_manager, process_manager);
+    let mut message_buff: [ListItem<u32>; 32] = unsafe { core::mem::uninitialized() };
+    let message_manager = MessageManager::new(&mut message_buff);
+    let mut kernel = Kernel::create(scheduler, serial, interrupt_manager, process_manager, message_manager);
 
     kernel.run()
 }
