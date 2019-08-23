@@ -27,3 +27,20 @@ macro_rules! process_create {
         Process::create(entry, sp, regs)
     }};
 }
+
+#[macro_export]
+macro_rules! process_register {
+    ($scheduler:expr,$process_manager:expr,$process:expr) => {
+        let mut node = util::avl_tree::Node::new($crate::process_manager::ProcessId(0), $process);
+        let id = $process_manager.register(&mut node);
+        let mut item = $crate::process_list::ProcessListItem::create(id);
+        $scheduler.push(&mut item);
+    };
+    ($scheduler:expr,$process_manager:expr,$process:expr,$id:ident) => {
+        let mut node = util::avl_tree::Node::new($crate::process_manager::ProcessId(0), $process);
+        let id = $process_manager.register(&mut node);
+        let $id = id.0;
+        let mut item = $crate::process_list::ProcessListItem::create(id);
+        $scheduler.push(&mut item);
+    };
+}

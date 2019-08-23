@@ -16,7 +16,7 @@ use device::exti::Exti;
 use device::irq::IrqId;
 use device::syscfg::Syscfg;
 use embedded_hal::serial::{Read, Write};
-use kernel::process_create;
+use kernel::{process_create, process_register};
 use kernel::process::Process;
 use kernel::scheduler::simple_scheduler::{SimpleScheduler};
 use kernel::scheduler::{Scheduler};
@@ -93,21 +93,11 @@ pub fn main() -> ! {
     */
     let mut scheduler = SimpleScheduler::new();
     let mut process_manager = ProcessManager::new();
-    let mut proc_node = Node::new(ProcessId(0), process);
-    let mut tick_node = Node::new(ProcessId(0), tick_process);
-    let mut button_node = Node::new(ProcessId(0), button_process);
-    let mut serial_node = Node::new(ProcessId(0), serial_process);
-    let mut process_item = ProcessListItem::create(process_manager.register(&mut proc_node));
-    let tick_process_id = process_manager.register(&mut tick_node);
-    unsafe { TICK_PROCESS_ID = tick_process_id.0; }
-    let mut tick_item = ProcessListItem::create(tick_process_id);
-    let mut button_item = ProcessListItem::create(process_manager.register(&mut button_node));
-    let mut serial_item = ProcessListItem::create(process_manager.register(&mut serial_node));
-
-    scheduler.push(&mut process_item);
-    scheduler.push(&mut tick_item);
-    scheduler.push(&mut button_item);
-    scheduler.push(&mut serial_item);
+    process_register!(scheduler, process_manager, process);
+    process_register!(scheduler, process_manager, tick_process, tick_process_id);
+    process_register!(scheduler, process_manager, serial_process);
+    process_register!(scheduler, process_manager, button_process);
+    unsafe { TICK_PROCESS_ID = tick_process_id; }
 
     let mut interrupt_manager = InterruptManager::create(nvic);
     interrupt_manager.register(IrqId::USART3, serial_loopback);
