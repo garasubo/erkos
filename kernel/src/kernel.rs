@@ -8,6 +8,8 @@ use arch::StackFrame;
 use core::slice::from_raw_parts;
 use core::cell::RefCell;
 use embedded_hal::serial::Write;
+use log::dhprintln;
+use core::fmt::{Write as CoreWrite};
 use rt::SYSCALL_FIRED;
 
 pub struct Kernel<'a, S, W> {
@@ -52,9 +54,26 @@ impl<'a, S, W> Kernel<'a, S, W> where S: Scheduler<'a>, W: Write<char> {
 
             match current_id {
                 Some(item) => {
+                    dhprintln!("executing process: {}", item.0);
                     let mut syscall: Option<*const u32> = None;
                     process_manager.get_mut(item).map(|process| {
+                        dhprintln!("process start sp: {:x}", process.sp as usize);
+                        let base_frame = unsafe { StackFrame::from_ptr(process.sp as *const u32) };
+                        dhprintln!("process start lr: {:x}", base_frame.lr);
+                        dhprintln!("process start pc: {:x}", base_frame.return_addr);
                         process.execute();
+                        dhprintln!("process stop sp: {:8x}", process.sp as usize);
+                        let base_frame = unsafe { StackFrame::from_ptr(process.sp as *const u32) };
+                        dhprintln!("process stop lr: {:x}", base_frame.lr);
+                        dhprintln!("process stop pc: {:x}", base_frame.return_addr);
+                        unsafe {
+                            let sp: u32;
+                            asm!("mov $0, sp":"=r"(sp):::"volatile");
+                            dhprintln!("sp: {:x}", sp);
+                            let lr: u32;
+                            asm!("mov $0, lr":"=r"(lr):::"volatile");
+                            dhprintln!("lr: {:x}", lr);
+                        }
                         unsafe {
                             if SYSCALL_FIRED > 0 {
                                 syscall.replace(process.sp as *const u32);
@@ -65,6 +84,7 @@ impl<'a, S, W> Kernel<'a, S, W> where S: Scheduler<'a>, W: Write<char> {
 
                     match syscall {
                         Some(sp) => {
+                            dhprintln!("syscall sp: {:x}", sp as usize);
                             let base_frame = unsafe { StackFrame::from_ptr_mut(sp) };
                             let svc_id = base_frame.r0;
                             match svc_id {
@@ -155,9 +175,6 @@ pub unsafe extern "C" fn SysTick() {
         cmp lr, #0xfffffffd
         bne from_kernel
 
-        mov r1, sp
-        ldr r1, [r1, #4]
-        stmia r1, {r4-r11}
         movw lr, #0xfff9
         movt lr, #0xffff
       from_kernel:

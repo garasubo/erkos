@@ -19,4 +19,7 @@ impl StackFrame {
     pub unsafe fn from_ptr_mut<'a>(sp: *const u32) -> &'a mut StackFrame {
         &mut *(sp as *mut StackFrame)
     }
+    pub unsafe fn from_ptr<'a>(sp: *const u32) -> &'a StackFrame {
+        &*(sp as *const StackFrame)
+    }
 }

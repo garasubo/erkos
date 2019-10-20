@@ -30,6 +30,7 @@ use util::linked_list::ListItem;
 use user::syscall::*;
 use cortex_m_semihosting::hio::hstdout;
 use core::fmt::Write as CoreWrite;
+use log::dhprintln;
 
 entry!(main);
 
@@ -107,19 +108,25 @@ pub fn main() -> ! {
     let message_manager = MessageManager::new(&mut message_buff);
 
     let mut kernel = Kernel::create(scheduler, serial, interrupt_manager, process_manager, message_manager);
+    unsafe {
+        let sp: u32;
+        asm!("mov $0, sp":"=r"(sp):::"volatile");
+        dhprintln!("sp: {:x}", sp);
+    }
     kernel.run();
 }
 
 pub unsafe extern "C" fn app_main(_r0: usize, _r1: usize, _r2: usize) -> ! {
+    unsafe {
+        let sp: u32;
+        asm!("mov $0, sp":"=r"(sp):::"volatile");
+        dhprintln!("sp: {:x}", sp);
+        let lr: u32;
+        asm!("mov $0, lr":"=r"(lr):::"volatile");
+        dhprintln!("lr: {:x}", lr);
+    }
     let message: &str = "app_main";
-    let message_ptr = message.as_ptr();
-    let length = message.bytes().len();
-    asm!(
-        "
-        mov r0, #1
-        svc 1
-        "
-    ::"{r1}"(message_ptr), "{r2}"(length)::"volatile");
+    print_str(message);
     loop {
         asm!(
             "
@@ -135,19 +142,17 @@ pub unsafe extern "C" fn button_callback() -> ! {
     let message_ptr = message.as_ptr();
     let length = message.bytes().len();
     loop {
-        asm!(
-            "
-            mov r0, #3
-            mov r1, #40
-            svc 1
-            "
-        :::"r0","r1":"volatile");
-        asm!(
-            "
-            mov r0, #1
-            svc 1
-            "
-        ::"{r1}"(message_ptr), "{r2}"(length):"r0":"volatile");
+        unsafe {
+            let sp: u32;
+            asm!("mov $0, sp":"=r"(sp):::"volatile");
+            dhprintln!("sp: {:x}", sp);
+            let lr: u32;
+            asm!("mov $0, lr":"=r"(lr):::"volatile");
+            dhprintln!("lr: {:x}", lr);
+        }
+        wait_for_interrupt(IrqId::EXTI15_10);
+        dhprintln!("get interrupt");
+        print_str(message);
     }
 }
 
@@ -172,12 +177,7 @@ pub unsafe extern "C" fn tick(_r0: usize, _r1: usize, _r2: usize) -> ! {
             gpiob.get_registers_ref().bsrr.write(0x1 << 7);
         }
         status = !status;
-        asm!(
-            "
-            mov r0, #4
-            svc 1
-            "
-        :::"r0":"volatile");
+        wait_for_systick();
     }
 }
 
@@ -215,11 +215,13 @@ pub fn serial_loopback() {
 
 pub fn nothing() {
     let exti = Exti::new(0x4001_3C00);
-    let mut serial = Serial::usart3();
+    // let mut serial = Serial::usart3();
     unsafe {
         exti.pr.write(0x1 << 13);
+        /*
         for c in "pressed\n".chars() {
             serial.write(c).unwrap();
         }
+        */
     }
 }

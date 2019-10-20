@@ -111,7 +111,9 @@ name = "kernel"
 version = "0.1.0"
 dependencies = [
  "arch 0.1.0",
+ "cortex-m-semihosting 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "embedded-hal 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.1.0",
  "rt 0.1.0",
  "util 0.1.0",
 ]
@@ -124,6 +126,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "log"
 version = "0.1.0"
+dependencies = [
+ "cortex-m-semihosting 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "nb"
