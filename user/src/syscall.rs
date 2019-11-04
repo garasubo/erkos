@@ -1,5 +1,16 @@
 use kernel::syscall_id::*;
 
+pub fn dormant() {
+    unsafe {
+        asm!(
+        "
+        svc 1
+        "
+        :: "{r0}"(DORMANT)::"volatile"
+        );
+    }
+}
+
 pub fn send_message(id: u32, message: u32) -> bool {
     let result: bool;
     unsafe {
@@ -9,7 +20,7 @@ pub fn send_message(id: u32, message: u32) -> bool {
         "
         :"={r0}"(result)
         : "{r0}"(SEND_MESSAGE),"{r1}"(id),"{r2}"(message)
-        :"r0","r4","r5","r6","r7","r8","r9","r10","r11":"volatile"
+        :"r0","r4","r5","r6","r7","r8","r9","r10","r11"
         :"volatile"
         );
     }
@@ -26,7 +37,7 @@ pub fn receive_message() -> Option<u32> {
         "
         :"={r0}"(result), "={r1}"(message)
         : "{r0}"(RECEIVE_MESSAGE)
-        :"r0","r4","r5","r6","r7","r8","r9","r10","r11":"volatile"
+        :"r0","r4","r5","r6","r7","r8","r9","r10","r11"
         :"volatile"
         );
     }

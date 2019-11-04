@@ -43,7 +43,7 @@ impl<'a> Process<'a> {
         base_frame[3] = 0; // r3
         base_frame[4] = 0; // r12
         base_frame[5] = 0; // lr(r14)
-        base_frame[6] = entry | 1; // return address
+        base_frame[6] = entry & !1; // return address
         base_frame[7] = 0x01000000; // xpsr, set thumb state
         Process {
             sp: base_frame_ptr as *mut u8,

@@ -113,7 +113,7 @@ impl<'a, S, W> Kernel<'a, S, W> where S: Scheduler<'a>, W: Write<char> {
                                 syscall_id::SEND_MESSAGE => {
                                     let arg1 = base_frame.r1;
                                     let arg2 = base_frame.r2;
-                                    let target = process_manager.get_mut(&ProcessId(arg1));
+                                    let target = process_manager.borrow_mut(&ProcessId(arg1));
                                     if target.is_none() {
                                         base_frame.r0 = 0;
                                     } else {
@@ -122,7 +122,7 @@ impl<'a, S, W> Kernel<'a, S, W> where S: Scheduler<'a>, W: Write<char> {
                                     }
                                 },
                                 syscall_id::RECEIVE_MESSAGE => {
-                                    let result = message_manager.receive_message(process_manager.get_mut(item).unwrap());
+                                    let result = message_manager.receive_message(process_manager.borrow_mut(item).unwrap());
                                     if result.is_none() {
                                         base_frame.r0 = 0;
                                     } else {
@@ -140,6 +140,7 @@ impl<'a, S, W> Kernel<'a, S, W> where S: Scheduler<'a>, W: Write<char> {
                     }
                 },
                 None => {
+                    dhprintln!("sleeping");
                     unsafe {
                         asm!("
                             cpsie i
@@ -170,11 +171,9 @@ pub static mut SHOULD_DISPATCH: u32 = 0;
 
 #[no_mangle]
 pub unsafe extern "C" fn SysTick() {
+    dhprintln!("systick");
     asm!(
         "
-        cmp lr, #0xfffffffd
-        bne from_kernel
-
         movw lr, #0xfff9
         movt lr, #0xffff
       from_kernel:

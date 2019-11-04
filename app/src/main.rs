@@ -40,10 +40,10 @@ pub fn main() -> ! {
     // let mut stdout = hstdout().unwrap();
     // write!(stdout, "Hello, world!").unwrap();
     
-    let process = process_create!(app_main, 1024);
+    // let process = process_create!(app_main, 1024);
     let tick_process = process_create!(tick, 512);
     let button_process = process_create!(button_callback, 256);
-    let serial_process = process_create!(serial_func, 256);
+    // let serial_process = process_create!(serial_func, 256);
     let registers = RCC.get_registers_ref();
 
     unsafe {
@@ -55,7 +55,7 @@ pub fn main() -> ! {
         registers.ahb1enr.write((1 << 3) | (1 << 2)| (1 << 1) | (1 << 21));
     }
 
-    let mut serial = Serial::usart3_tx_dma();
+    let mut serial = Serial::usart3();
     let systick = Systick::new();
     let val = systick.get_ticks_per_10ms();
     systick.clear_current();
@@ -86,7 +86,7 @@ pub fn main() -> ! {
         gpiod.get_registers_ref().afrh.write(0x7 | (0x7 << 4));
     }
     let nvic = Nvic::new();
-    serial.send_buffer("hello dma world\r\n".as_bytes());
+    // serial.send_buffer("hello dma world\r\n".as_bytes());
     /*
     for c in "hello world".chars() {
         serial.write(c).unwrap();
@@ -94,15 +94,15 @@ pub fn main() -> ! {
     */
     let mut scheduler = SimpleScheduler::new();
     let mut process_manager = ProcessManager::new();
-    process_register!(scheduler, process_manager, process);
+    // process_register!(scheduler, process_manager, process);
     process_register!(scheduler, process_manager, tick_process, tick_process_id);
-    process_register!(scheduler, process_manager, serial_process);
+    // process_register!(scheduler, process_manager, serial_process);
     process_register!(scheduler, process_manager, button_process);
     unsafe { TICK_PROCESS_ID = tick_process_id; }
 
     let mut interrupt_manager = InterruptManager::create(nvic);
-    interrupt_manager.register(IrqId::USART3, serial_loopback);
-    interrupt_manager.register(IrqId::EXTI15_10, nothing);
+    // interrupt_manager.register(IrqId::USART3, serial_loopback);
+    // interrupt_manager.register(IrqId::EXTI15_10, nothing);
 
     let mut message_buff: [ListItem<u32>; 32] = unsafe { core::mem::uninitialized() };
     let message_manager = MessageManager::new(&mut message_buff);
@@ -150,34 +150,40 @@ pub unsafe extern "C" fn button_callback() -> ! {
             asm!("mov $0, lr":"=r"(lr):::"volatile");
             dhprintln!("lr: {:x}", lr);
         }
-        wait_for_interrupt(IrqId::EXTI15_10);
+        wait_for_event();
+        // wait_for_interrupt(IrqId::EXTI15_10);
         dhprintln!("get interrupt");
         print_str(message);
     }
 }
 
 pub unsafe extern "C" fn tick(_r0: usize, _r1: usize, _r2: usize) -> ! {
-    let gpiob = Gpio::new(0x4002_0400);
+    // let gpiob = Gpio::new(0x4002_0400);
     let mut status = false;
     let mut mode = 0;
     loop {
+        /*
         match receive_message() {
             Some(command) => {
                 mode = command;
             },
             None => {}
         }
+        */
         if mode == 0 {
             wait_for_event();
             continue;
         }
+        /*
         if status {
             gpiob.get_registers_ref().bsrr.write(0x1 << 23);
         } else {
             gpiob.get_registers_ref().bsrr.write(0x1 << 7);
         }
+        */
         status = !status;
-        wait_for_systick();
+        // wait_for_systick();
+        wait_for_event();
     }
 }
 
