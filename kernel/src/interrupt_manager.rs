@@ -69,7 +69,6 @@ impl<'a> InterruptManager<'a> {
 }
 
 pub unsafe extern "C" fn DefaultIrqHandler() {
-    panic!("no irq");
     asm!(
         "
         movw lr, #0xfff9

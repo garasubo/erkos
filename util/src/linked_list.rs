@@ -69,6 +69,7 @@ impl<'a, T> LinkedList<'a, T> {
             self.last = None;
         }
         self.head = next;
+        self.len -= 1;
         result
     }
 
@@ -110,6 +111,7 @@ impl<'a, T> LinkedList<'a, T> {
             }
         }
         self.len += target.len;
+        target.len = 0;
     }
 
     pub fn iter(&self) -> Iter<'a, T> {
