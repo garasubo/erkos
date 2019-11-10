@@ -9,6 +9,8 @@ arch = { path = "../arch" }
 rt = { path = "../rt" }
 kernel = { path = "../kernel" }
 util = { path = "../util" }
+log = { path = "../log" }
+user = { path = "../user" }
 cortex-m-semihosting = "0.3.2"
 embedded-hal = "0.2.2"
 nb = "0.1.2"
