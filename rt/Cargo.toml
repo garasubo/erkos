@@ -5,5 +5,5 @@ authors = ["garasubo <garasubo@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-cortex-m-semihosting = "0.3.2"
+cortex-m-semihosting = "0.3.5"
 log = { path = "../log" }

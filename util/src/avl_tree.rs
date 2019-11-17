@@ -282,7 +282,7 @@ impl<'a, K, V> BinaryTree<'a, K, V, Node<'a, K, V>> for AvlTree<'a, K, V> where 
     fn borrow_mut(&mut self, key: &K) ->  Option<&'a mut V> {
         let mut result = None;
         self.head.as_mut().map(|head| unsafe {
-            let mut current = (*head as *mut Node<'a, K, V>).clone();
+            let mut current = *head as *mut Node<'a, K, V>;
             while (*current).item.0 != *key {
                 if (*current).item.0 < *key {
                     if (*current).right.is_none() {

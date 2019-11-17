@@ -11,10 +11,9 @@ macro_rules! stack_allocate {
 #[macro_export]
 macro_rules! reg_allocate {
     () => {{
-        #[link_section = ".uninit"]
         static mut REGS: [u32; 8] = [0; 8];
 
-        unsafe { &REGS }
+        unsafe { &mut REGS }
     }};
 }
 

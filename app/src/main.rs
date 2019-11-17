@@ -30,6 +30,7 @@ use util::linked_list::ListItem;
 use user::syscall::*;
 use cortex_m_semihosting::hio::hstdout;
 use core::fmt::Write as CoreWrite;
+use log::dhprintln;
 
 entry!(main);
 
@@ -40,9 +41,9 @@ pub fn main() -> ! {
     // write!(stdout, "Hello, world!").unwrap();
     
     let process = process_create!(app_main, 1024);
-    let tick_process = process_create!(tick, 512);
-    let button_process = process_create!(button_callback, 256);
-    let serial_process = process_create!(serial_func, 256);
+    let tick_process = process_create!(tick, 1024);
+    let button_process = process_create!(button_callback, 1024);
+    let serial_process = process_create!(serial_func, 1024);
     let registers = RCC.get_registers_ref();
 
     unsafe {
@@ -54,7 +55,7 @@ pub fn main() -> ! {
         registers.ahb1enr.write((1 << 3) | (1 << 2)| (1 << 1) | (1 << 21));
     }
 
-    let mut serial = Serial::usart3_tx_dma();
+    let mut serial = Serial::usart3();
     let systick = Systick::new();
     let val = systick.get_ticks_per_10ms();
     systick.clear_current();
@@ -85,12 +86,10 @@ pub fn main() -> ! {
         gpiod.get_registers_ref().afrh.write(0x7 | (0x7 << 4));
     }
     let nvic = Nvic::new();
-    serial.send_buffer("hello dma world\r\n".as_bytes());
-    /*
+    // serial.send_buffer("hello dma world\r\n".as_bytes());
     for c in "hello world".chars() {
         serial.write(c).unwrap();
     }
-    */
     let mut scheduler = SimpleScheduler::new();
     let mut process_manager = ProcessManager::new();
     process_register!(scheduler, process_manager, process);
@@ -107,19 +106,17 @@ pub fn main() -> ! {
     let message_manager = MessageManager::new(&mut message_buff);
 
     let mut kernel = Kernel::create(scheduler, serial, interrupt_manager, process_manager, message_manager);
+    unsafe {
+        let sp: u32;
+        asm!("mov $0, sp":"=r"(sp):::"volatile");
+        dhprintln!("sp: {:x}", sp);
+    }
     kernel.run();
 }
 
 pub unsafe extern "C" fn app_main(_r0: usize, _r1: usize, _r2: usize) -> ! {
     let message: &str = "app_main";
-    let message_ptr = message.as_ptr();
-    let length = message.bytes().len();
-    asm!(
-        "
-        mov r0, #1
-        svc 1
-        "
-    ::"{r1}"(message_ptr), "{r2}"(length)::"volatile");
+    print_str(message);
     loop {
         asm!(
             "
@@ -135,19 +132,9 @@ pub unsafe extern "C" fn button_callback() -> ! {
     let message_ptr = message.as_ptr();
     let length = message.bytes().len();
     loop {
-        asm!(
-            "
-            mov r0, #3
-            mov r1, #40
-            svc 1
-            "
-        :::"r0","r1":"volatile");
-        asm!(
-            "
-            mov r0, #1
-            svc 1
-            "
-        ::"{r1}"(message_ptr), "{r2}"(length):"r0":"volatile");
+        wait_for_event();
+        wait_for_interrupt(IrqId::EXTI15_10);
+        print_str(message);
     }
 }
 
@@ -172,12 +159,8 @@ pub unsafe extern "C" fn tick(_r0: usize, _r1: usize, _r2: usize) -> ! {
             gpiob.get_registers_ref().bsrr.write(0x1 << 7);
         }
         status = !status;
-        asm!(
-            "
-            mov r0, #4
-            svc 1
-            "
-        :::"r0":"volatile");
+        wait_for_systick();
+        wait_for_event();
     }
 }
 
@@ -215,11 +198,13 @@ pub fn serial_loopback() {
 
 pub fn nothing() {
     let exti = Exti::new(0x4001_3C00);
-    let mut serial = Serial::usart3();
+    // let mut serial = Serial::usart3();
     unsafe {
         exti.pr.write(0x1 << 13);
+        /*
         for c in "pressed\n".chars() {
             serial.write(c).unwrap();
         }
+        */
     }
 }

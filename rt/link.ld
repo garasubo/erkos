@@ -21,6 +21,8 @@ SECTIONS
     *(.text .text.*);
   } > FLASH
 
+  .ARM.exidx   ALIGN(4) : { *(.ARM.exidx* .gnu.linkonce.armexidx.*)  } > FLASH
+
   .rodata :
   {
       *(.rodata .rodata.*);

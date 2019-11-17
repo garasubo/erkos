@@ -39,13 +39,13 @@ macro_rules! debug {
 #[macro_export]
 macro_rules! dhprintln {
     () => {
-        cortex_m_semihosting::hprintln!("\n").unwrap()
+        cortex_m_semihosting::hprintln!("\n").unwrap_or(())
     };
     ($s:expr) => {
-        cortex_m_semihosting::hprintln!($s).unwrap()
+        cortex_m_semihosting::hprintln!($s).unwrap_or(())
     };
     ($s:expr, $($tt:tt)*) => {
-        cortex_m_semihosting::hprintln!($s, $($tt)*).unwrap()
+        cortex_m_semihosting::hprintln!($s, $($tt)*).unwrap_or(())
     };
 }
 

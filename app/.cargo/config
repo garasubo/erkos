@@ -4,7 +4,7 @@ rustflags = [
     "-C", "link-arg=-Tlink.ld",
     "-C", "link-arg=-Tlog.ld",
 ]
-runner = "./qemu-gnuarmeclipse.sh"
+runner = "../qemu-gnuarmeclipse.sh"
 
 [target.thumbv7m-none-eabi]
 rustflags = [

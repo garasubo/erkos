@@ -25,11 +25,19 @@ impl<'a, P> ProcessManager<'a, P> {
         id
     }
 
-    pub fn get(&self, id: &ProcessId) -> Option<&'a P> {
+    pub fn get(&self, id: &ProcessId) -> Option<&P> {
+        self.map.get(id)
+    }
+    
+    pub fn borrow(&self, id: &ProcessId) -> Option<&'a P> {
         self.map.borrow(id)
     }
 
-    pub fn get_mut(&mut self, id: &ProcessId) -> Option<&'a mut P> {
+    pub fn get_mut(&mut self, id: &ProcessId) -> Option<&mut P> {
+        self.map.get_mut(id)
+    }
+    
+    pub fn borrow_mut(&mut self, id: &ProcessId) -> Option<&'a mut P> {
         self.map.borrow_mut(id)
     }
 }

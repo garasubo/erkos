@@ -9,7 +9,7 @@ use cortex_m_semihosting::hio::HStdout;
 use embedded_hal::serial::Write;
 use rt::entry;
 use arch::nvic::Nvic;
-use kernel::process_create;
+use kernel::{process_create, process_register};
 use kernel::process::Process;
 use kernel::scheduler::simple_scheduler::{SimpleScheduler};
 use kernel::scheduler::{Scheduler};
@@ -20,8 +20,17 @@ use kernel::process_manager::{ProcessId, ProcessManager};
 use kernel::message_manager::MessageManager;
 use util::linked_list::ListItem;
 use util::avl_tree::Node;
+use user::syscall::{dormant, wait_for_event, wait_for_interrupt};
+use log::dhprintln;
+use rt::Vector;
 
 entry!(main);
+#[link_section = ".irq_table"]
+#[used]
+#[no_mangle]
+pub static mut IRQS: [Vector; 1] = [
+    Vector { reserved: 0 }, // WWDG (0)
+];
 
 struct SemihostSerial { hstdout: HStdout }
 
@@ -47,12 +56,17 @@ fn main() -> ! {
 
     let mut scheduler = SimpleScheduler::new();
     let serial = SemihostSerial { hstdout };
-    let interrupt_manager = InterruptManager::create(nvic);
+    let mut interrupt_manager = InterruptManager::create(nvic);
     let mut process_manager = ProcessManager::new();
     let process = process_create!(app_main, 1024);
-    let mut node = Node::new(ProcessId(0), process);
-    let mut item = ProcessListItem::create(process_manager.register(&mut node));
-    scheduler.push(&mut item);
+    let process2 = process_create!(app_main2, 1024);
+    let process3= process_create!(app_main3, 1024);
+    let process4= process_create!(app_main4, 1024);
+    process_register!(scheduler, process_manager, process);
+    process_register!(scheduler, process_manager, process2);
+    process_register!(scheduler, process_manager, process3);
+    process_register!(scheduler, process_manager, process4);
+    interrupt_manager.register(0, nothing);
 
     let mut message_buff: [ListItem<u32>; 32] = unsafe { core::mem::uninitialized() };
     let message_manager = MessageManager::new(&mut message_buff);
@@ -61,10 +75,22 @@ fn main() -> ! {
     kernel.run()
 }
 
+fn nothing() { }
+
+fn fib(n: usize) -> usize {
+    dhprintln!("fib called");
+    if n <= 1 {
+        1
+    } else {
+        fib(n-1) + fib(n-2)
+    }
+}
+
 extern "C" fn app_main() -> ! {
     let message: &str = "app_main\n";
     let message_ptr = message.as_ptr();
     let length = message.bytes().len();
+    dhprintln!("fib {}: {}", 5, fib(5));
     unsafe {
         asm!(
             "
@@ -73,6 +99,35 @@ extern "C" fn app_main() -> ! {
             "
         ::"{r1}"(message_ptr), "{r2}"(length)::"volatile");
     }
-    debug::exit(debug::EXIT_SUCCESS);
+    wait_for_event();
+    dhprintln!("fib {}: {}", 8, fib(8));
+    dormant();
     loop {}
+}
+extern "C" fn app_main2() -> ! {
+    dhprintln!("fib {}: {}", 6, fib(6));
+    wait_for_event();
+    dhprintln!("fib {}: {}", 9, fib(9));
+    wait_for_event();
+    debug::exit(debug::EXIT_SUCCESS);
+    
+    loop {
+        dormant();
+    }
+}
+
+extern "C" fn app_main3() -> ! {
+    dhprintln!("fib {}: {}", 7, fib(7));
+    wait_for_event();
+    dhprintln!("fib {}: {}", 10, fib(10));
+    loop {
+        dormant();
+    }
+}
+
+extern "C" fn app_main4() -> ! {
+    wait_for_interrupt(0);
+    loop {
+        dormant();
+    }
 }
