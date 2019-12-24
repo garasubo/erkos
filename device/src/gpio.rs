@@ -1,5 +1,6 @@
 extern crate embedded_hal as hal;
 use volatile_register::{RO, RW};
+use core::ops::Deref;
 
 #[repr(C)]
 pub struct GpioRegisters {
@@ -26,5 +27,14 @@ impl Gpio {
 
     pub fn get_registers_ref(&self) -> &GpioRegisters {
         unsafe { &*self.registers }
+    }
+}
+
+impl Deref for Gpio {
+    type Target = GpioRegisters;
+
+    fn deref(&self) -> &Self::Target {
+        let registers = self.registers as *mut GpioRegisters;
+        unsafe { &*registers }
     }
 }

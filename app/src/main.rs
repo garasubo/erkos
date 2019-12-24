@@ -51,8 +51,8 @@ pub fn main() -> ! {
         registers.apb1enr.write(1 << 18);
         // enable SYSCFG
         registers.apb2enr.write(1 << 14);
-        // enable GPIOD and GPIOB and GPIOC and DMA1
-        registers.ahb1enr.write((1 << 3) | (1 << 2)| (1 << 1) | (1 << 21));
+        // enable GPIOA - GPIOE, GPIOG-GPIOI and DMA1
+        registers.ahb1enr.write(0b1_1101_1111 | (1 << 21));
     }
 
     let mut serial = Serial::usart3();
@@ -61,19 +61,24 @@ pub fn main() -> ! {
     systick.clear_current();
     systick.set_reload(val * 100);
     systick.enable();
+    let gpioa = Gpio::new(0x4002_0000);
     let gpiob = Gpio::new(0x4002_0400);
     let gpioc = Gpio::new(0x4002_0800);
-    let gpiod = Gpio::new(0x40020c00);
+    let gpiod = Gpio::new(0x4002_0c00);
+    let gpioe = Gpio::new(0x4002_1000);
+    let gpiog = Gpio::new(0x4002_1800);
+    let gpioh = Gpio::new(0x4002_1c00);
+    let gpioi = Gpio::new(0x4002_2000);
     let exti = Exti::new(0x4001_3C00);
     let syscfg = Syscfg::new(0x4001_3800);
     // For LED
     unsafe {
-        gpiob.get_registers_ref().moder.modify(|val| (val | 0b1 | (0b1 << 14)));
-        gpiob.get_registers_ref().bsrr.write(0x1);
+        gpiob.moder.modify(|val| (val | (0b1 << 28) | (0b1 << 14)));
+        gpiob.bsrr.write(0x1 << 28);
     }
     // For button
     unsafe {
-        gpioc.get_registers_ref().pupdr.modify(|val| (val | (0b10 << 26)));
+        gpioc.pupdr.modify(|val| (val | (0b10 << 26)));
         syscfg.exticr4.write(0b0010 << 4);
         exti.imr.write(0);
         exti.pr.write(0x1 << 13);
@@ -82,8 +87,26 @@ pub fn main() -> ! {
     }
     // For usart
     unsafe {
-        gpiod.get_registers_ref().moder.write((0x2 << 16) | (0x2 << 18));
-        gpiod.get_registers_ref().afrh.write(0x7 | (0x7 << 4));
+        gpiod.moder.write((0x2 << 16) | (0x2 << 18));
+        gpiod.afrh.write(0x7 | (0x7 << 4));
+    }
+    // For nic
+    unsafe {
+        gpioa.moder.modify(|val| (val | 0b10101010 | (0b10 << 14)));
+        gpioa.afrl.modify(|val| (val | 0b1011_1011_1011_1011 | (0b1011 << 28)));
+        gpiob.moder.modify(|val| val | 0b1010 | (0b10 << 10) | (0b10 << 16) | (0b10101010 << 20));
+        gpiob.afrl.modify(|val| (val | 0b1011_1011 | (0b1011 << 20)));
+        gpiob.afrh.modify(|val| (val | 0b1011 | (0b1011_1011_1011_1011 << 8)));
+        gpioc.moder.modify(|val| val | (0b1010101010 << 2));
+        gpioc.afrl.modify(|val| val | (0b1011_1011_1011_1011_1011 << 4));
+        gpioe.moder.modify(|val| val | (0x10 << 4));
+        gpioe.afrl.modify(|val| val | (0b1011 << 8));
+        gpiog.moder.modify(|val| val | (0b10 << 16) | (0b10 << 22) | (0b1010 << 26));
+        gpiog.afrh.modify(|val| val | 0b1011 | (0b1011 << 12) | (0b1011_1011 << 20));
+        gpioh.moder.modify(|val| val | (0x1010 << 4) | (0x1010 << 12));
+        gpioh.afrl.modify(|val| val | (0b1011_1011 << 8) | (0b1011_1011 << 24));
+        gpioi.moder.modify(|val| val | (0b10 << 20));
+        gpioi.afrh.modify(|val| val | (0b1011 << 8));
     }
     let nvic = Nvic::new();
     // serial.send_buffer("hello dma world\r\n".as_bytes());
