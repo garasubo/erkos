@@ -3,6 +3,7 @@
 #![feature(asm)]
 
 pub mod dma;
+pub mod eth;
 pub mod exti;
 pub mod irq;
 pub mod gpio;

@@ -51,8 +51,8 @@ pub fn main() -> ! {
         registers.apb1enr.write(1 << 18);
         // enable SYSCFG
         registers.apb2enr.write(1 << 14);
-        // enable GPIOA - GPIOE, GPIOG-GPIOI and DMA1
-        registers.ahb1enr.write(0b1_1101_1111 | (1 << 21));
+        // enable GPIOA - GPIOE, GPIOG-GPIOI, ETH and DMA1
+        registers.ahb1enr.write(0b1_1101_1111 | (1 << 21) | (0b1111 << 25));
     }
 
     let mut serial = Serial::usart3();
