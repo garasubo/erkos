@@ -6,31 +6,32 @@
 #![no_main]
 #![feature(asm)]
 
-use rt::entry;
-use device::gpio::Gpio;
-use device::rcc:: RCC;
-use device::serial::Serial;
 use arch::nvic::Nvic;
 use arch::systick::Systick;
+use core::fmt::Write as CoreWrite;
+use cortex_m_semihosting::hio::hstdout;
+use device::eth::{Ethernet, EthernetTransmitter};
 use device::exti::Exti;
+use device::gpio::Gpio;
 use device::irq::IrqId;
+use device::rcc::RCC;
+use device::serial::Serial;
 use device::syscfg::Syscfg;
 use embedded_hal::serial::{Read, Write};
-use kernel::{process_create, process_register};
-use kernel::process::Process;
-use kernel::scheduler::simple_scheduler::{SimpleScheduler};
-use kernel::scheduler::{Scheduler};
-use kernel::process_list::ProcessListItem;
-use kernel::process_manager::{ProcessManager, ProcessId};
 use kernel::interrupt_manager::InterruptManager;
-use kernel::message_manager::MessageManager;
 use kernel::kernel::Kernel;
+use kernel::message_manager::MessageManager;
+use kernel::process::Process;
+use kernel::process_list::ProcessListItem;
+use kernel::process_manager::{ProcessId, ProcessManager};
+use kernel::scheduler::simple_scheduler::SimpleScheduler;
+use kernel::scheduler::Scheduler;
+use kernel::{process_create, process_register};
+use log::dhprintln;
+use rt::entry;
+use user::syscall::*;
 use util::avl_tree::Node;
 use util::linked_list::ListItem;
-use user::syscall::*;
-use cortex_m_semihosting::hio::hstdout;
-use core::fmt::Write as CoreWrite;
-use log::dhprintln;
 
 entry!(main);
 
@@ -39,7 +40,7 @@ static mut TICK_PROCESS_ID: u32 = 0;
 pub fn main() -> ! {
     // let mut stdout = hstdout().unwrap();
     // write!(stdout, "Hello, world!").unwrap();
-    
+
     let process = process_create!(app_main, 1024);
     let tick_process = process_create!(tick, 1024);
     let button_process = process_create!(button_callback, 1024);
@@ -52,7 +53,9 @@ pub fn main() -> ! {
         // enable SYSCFG
         registers.apb2enr.write(1 << 14);
         // enable GPIOA - GPIOE, GPIOG-GPIOI, ETH and DMA1
-        registers.ahb1enr.write(0b1_1101_1111 | (1 << 21) | (0b1111 << 25));
+        registers
+            .ahb1enr
+            .write(0b1_1101_1111 | (1 << 21) | (0b1111 << 25));
     }
 
     let mut serial = Serial::usart3();
@@ -93,18 +96,36 @@ pub fn main() -> ! {
     // For nic
     unsafe {
         gpioa.moder.modify(|val| (val | 0b10101010 | (0b10 << 14)));
-        gpioa.afrl.modify(|val| (val | 0b1011_1011_1011_1011 | (0b1011 << 28)));
-        gpiob.moder.modify(|val| val | 0b1010 | (0b10 << 10) | (0b10 << 16) | (0b10101010 << 20));
-        gpiob.afrl.modify(|val| (val | 0b1011_1011 | (0b1011 << 20)));
-        gpiob.afrh.modify(|val| (val | 0b1011 | (0b1011_1011_1011_1011 << 8)));
+        gpioa
+            .afrl
+            .modify(|val| (val | 0b1011_1011_1011_1011 | (0b1011 << 28)));
+        gpiob
+            .moder
+            .modify(|val| val | 0b1010 | (0b10 << 10) | (0b10 << 16) | (0b10101010 << 20));
+        gpiob
+            .afrl
+            .modify(|val| (val | 0b1011_1011 | (0b1011 << 20)));
+        gpiob
+            .afrh
+            .modify(|val| (val | 0b1011 | (0b1011_1011_1011_1011 << 8)));
         gpioc.moder.modify(|val| val | (0b1010101010 << 2));
-        gpioc.afrl.modify(|val| val | (0b1011_1011_1011_1011_1011 << 4));
+        gpioc
+            .afrl
+            .modify(|val| val | (0b1011_1011_1011_1011_1011 << 4));
         gpioe.moder.modify(|val| val | (0x10 << 4));
         gpioe.afrl.modify(|val| val | (0b1011 << 8));
-        gpiog.moder.modify(|val| val | (0b10 << 16) | (0b10 << 22) | (0b1010 << 26));
-        gpiog.afrh.modify(|val| val | 0b1011 | (0b1011 << 12) | (0b1011_1011 << 20));
-        gpioh.moder.modify(|val| val | (0x1010 << 4) | (0x1010 << 12));
-        gpioh.afrl.modify(|val| val | (0b1011_1011 << 8) | (0b1011_1011 << 24));
+        gpiog
+            .moder
+            .modify(|val| val | (0b10 << 16) | (0b10 << 22) | (0b1010 << 26));
+        gpiog
+            .afrh
+            .modify(|val| val | 0b1011 | (0b1011 << 12) | (0b1011_1011 << 20));
+        gpioh
+            .moder
+            .modify(|val| val | (0x1010 << 4) | (0x1010 << 12));
+        gpioh
+            .afrl
+            .modify(|val| val | (0b1011_1011 << 8) | (0b1011_1011 << 24));
         gpioi.moder.modify(|val| val | (0b10 << 20));
         gpioi.afrh.modify(|val| val | (0b1011 << 8));
     }
@@ -119,16 +140,29 @@ pub fn main() -> ! {
     process_register!(scheduler, process_manager, tick_process, tick_process_id);
     process_register!(scheduler, process_manager, serial_process);
     process_register!(scheduler, process_manager, button_process);
-    unsafe { TICK_PROCESS_ID = tick_process_id; }
+    unsafe {
+        TICK_PROCESS_ID = tick_process_id;
+    }
 
     let mut interrupt_manager = InterruptManager::create(nvic);
     interrupt_manager.register(IrqId::USART3, serial_loopback);
     interrupt_manager.register(IrqId::EXTI15_10, nothing);
 
-    let mut message_buff: [ListItem<u32>; 32] = unsafe { core::mem::uninitialized() };
+    let mut message_buff: [ListItem<u32>; 32] =
+        unsafe { core::mem::MaybeUninit::uninit().assume_init() };
     let message_manager = MessageManager::new(&mut message_buff);
 
-    let mut kernel = Kernel::create(scheduler, serial, interrupt_manager, process_manager, message_manager);
+    let mut kernel = Kernel::create(
+        scheduler,
+        serial,
+        interrupt_manager,
+        process_manager,
+        message_manager,
+    );
+    let eth = Ethernet::new(0x4002_8000);
+    #[link_section = ".uninit"]
+    static mut ETH_TRANS_BUFF: [u64; 32] = [0; 32];
+    let transmitter = EthernetTransmitter::new(&eth, unsafe { &mut ETH_TRANS_BUFF }, 32);
     unsafe {
         let sp: u32;
         asm!("mov $0, sp":"=r"(sp):::"volatile");
@@ -169,7 +203,7 @@ pub unsafe extern "C" fn tick(_r0: usize, _r1: usize, _r2: usize) -> ! {
         match receive_message() {
             Some(command) => {
                 mode = command;
-            },
+            }
             None => {}
         }
         if mode == 0 {

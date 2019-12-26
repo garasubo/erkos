@@ -187,3 +187,21 @@ impl Ethernet {
         }
     }
 }
+
+pub struct EthernetTransmitter<'a> {
+    eth: &'a Ethernet,
+    buff: &'static mut [u64],
+    len: usize,
+    pos: usize,
+}
+
+impl<'a> EthernetTransmitter<'a> {
+    pub fn new(eth: &'a Ethernet, buff: &'static mut [u64], len: usize) -> EthernetTransmitter<'a> {
+        EthernetTransmitter {
+            eth,
+            buff,
+            len,
+            pos: 0,
+        }
+    }
+}
