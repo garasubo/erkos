@@ -177,6 +177,37 @@ impl Deref for EthernetDma {
     }
 }
 
+pub mod phy {
+    pub const REG_BCR: u8 = 0;
+    pub const REG_BSR: u8 = 1;
+    pub const REG_ID1R: u8 = 2;
+    pub const REG_ID2R: u8 = 3;
+    pub const REG_ANAR: u8 = 4;
+    pub const REG_ANLPAR: u8 = 5;
+    pub const REG_ANER: u8 = 6;
+    pub const REG_ANNPTR: u8 = 7;
+    pub const REG_ANNPRR: u8 = 8;
+
+    pub const REG_MMD_ACR: u8 = 13;
+    pub const REG_MMD_ADR: u8 = 14;
+
+    pub const REG_EDPD_CTR: u8 = 16;
+
+    pub const REG_MSR: u8 = 17;
+    pub const REG_SMR: u8 = 18;
+
+    pub const REG_TDR_PDCR: u8 = 24;
+    pub const REG_TDR_CSR: u8 = 25;
+
+    pub const REG_SECR: u8 = 26;
+    pub const REG_SCSIR: u8 = 27;
+    pub const REG_CLR: u8 = 28;
+    pub const REG_ISFR: u8 = 29;
+    pub const REG_IMR: u8 = 30;
+    pub const REG_SCSR: u8 = 31;
+}
+
+
 impl Ethernet {
     pub const fn new(base: u32) -> Ethernet {
         Ethernet { 
@@ -184,6 +215,71 @@ impl Ethernet {
             mmc: EthernetMmc { base: base + 0x100 },
             ptp: EthernetPtp { base: base + 0x700 },
             dma: EthernetDma { base: base + 0x1000 },
+        }
+    }
+
+    fn read_phy_reg(&self, reg: u8) -> u32 {
+        unsafe {
+            self.mac.miiar.modify(|val| val & !(0x1f << 6) | ((reg as u32) << 6) & !(1 << 1) | 1);
+            while self.mac.miiar.read() & 1 > 0 {}
+            // wait until MB is cleared
+            self.mac.miidr.read()
+        }
+    }
+
+    fn write_phy_reg(&self, reg: u8, data: u32) {
+        unsafe {
+            self.mac.miidr.write(data);
+            self.mac.miiar.modify(|val| val & !(0x1f << 6) | ((reg as u32) << 6) | (1 << 1) | 1);
+            // wait until MB is cleared
+            while self.mac.miiar.read() & 1 > 0 {}
+        }
+    }
+    
+    fn modify_phy_reg(&self, reg: u8, f: fn(u32) -> u32) {
+        unsafe {
+            self.mac.miiar.modify(|val| val & !(0x1f << 6) | ((reg as u32) << 6) & !(1 << 1) | 1);
+            while self.mac.miiar.read() & 1 > 0 {}
+            // wait until MB is cleared
+            let val = self.mac.miidr.read();
+            self.mac.miidr.write(f(val));
+            self.mac.miiar.modify(|val| val & !(0x1f << 6) | ((reg as u32) << 6) | (1 << 1) | 1);
+            while self.mac.miiar.read() & 1 > 0 {}
+        }
+    }
+
+    pub fn init(&self) {
+        unsafe {
+            // reset dma
+            self.dma.bmr.modify(|val| val & !1);
+            while self.dma.bmr.read() & 1 > 0 {}
+            
+            // hclk div 16
+            self.mac.miiar.write(0b010 << 2);
+
+            // reset phy
+            // set soft reset
+            self.write_phy_reg(phy::REG_BCR, 1 << 15);
+            // set auto negotiation
+            self.modify_phy_reg(phy::REG_BCR, |val| val | (1 << 12) | (1 << 9));
+
+            // configure mac
+            // CSTF, FES, DM, APCS, RE
+            self.mac.cr.modify(|val| val | (1 << 25) | (1 << 14) | (1 << 11) | (1 << 7) | (1 << 2));
+
+            // RA, PM
+            self.mac.ffr.modify(|val| val | (1 << 31) | 1);
+            
+            // set pause time 100
+            self.mac.fcr.modify(|val| val & !(0xffff << 16) | (100 << 16));
+
+            // DTCEFD, RSF, DFRF, TSF, FEF, OSF
+            self.dma.omr.modify(|val| val | (1 << 26) |(1 << 25) | (1 << 24) | (1 << 21) | (1 << 7) | (1 << 2));
+
+            // AAB, FB, RDP = 32, PBL = 32, PM = 01, USP
+            self.dma.bmr.modify(|val| val | (1 << 25) | (1 << 16) & !(0x3f << 17) | (32 << 17) & !(0x3f << 8) | (32 << 8) & !(0b11 << 14) | (0b01 << 14) | (1 << 23));
+
+            while self.read_phy_reg(phy::REG_SCSR) & (1 << 12) == 0 {}
         }
     }
 }
@@ -202,6 +298,13 @@ impl<'a> EthernetTransmitter<'a> {
             buff,
             len,
             pos: 0,
+        }
+    }
+
+    pub fn init(&self) {
+        let addr = &self.buff[0] as *const u64 as u32;
+        unsafe {
+            self.eth.dma.tdlar.write(addr);
         }
     }
 }

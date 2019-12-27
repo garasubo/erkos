@@ -46,12 +46,14 @@ pub fn main() -> ! {
     let button_process = process_create!(button_callback, 1024);
     let serial_process = process_create!(serial_func, 1024);
     let registers = RCC.get_registers_ref();
+    let syscfg = Syscfg::new(0x4001_3800);
 
     unsafe {
         // enable USART3
         registers.apb1enr.write(1 << 18);
         // enable SYSCFG
         registers.apb2enr.write(1 << 14);
+        syscfg.pmc.modify(|val| val | (1 << 23));
         // enable GPIOA - GPIOE, GPIOG-GPIOI, ETH and DMA1
         registers
             .ahb1enr
@@ -73,7 +75,6 @@ pub fn main() -> ! {
     let gpioh = Gpio::new(0x4002_1c00);
     let gpioi = Gpio::new(0x4002_2000);
     let exti = Exti::new(0x4001_3C00);
-    let syscfg = Syscfg::new(0x4001_3800);
     // For LED
     unsafe {
         gpiob.moder.modify(|val| (val | (0b1 << 28) | (0b1 << 14)));
@@ -128,6 +129,8 @@ pub fn main() -> ! {
             .modify(|val| val | (0b1011_1011 << 8) | (0b1011_1011 << 24));
         gpioi.moder.modify(|val| val | (0b10 << 20));
         gpioi.afrh.modify(|val| val | (0b1011 << 8));
+        registers.ahb1rstr.modify(|val| val | (1 << 25));
+        registers.ahb1rstr.modify(|val| val & !(1 << 25));
     }
     let nvic = Nvic::new();
     // serial.send_buffer("hello dma world\r\n".as_bytes());
@@ -160,6 +163,7 @@ pub fn main() -> ! {
         message_manager,
     );
     let eth = Ethernet::new(0x4002_8000);
+    eth.init();
     #[link_section = ".uninit"]
     static mut ETH_TRANS_BUFF: [u64; 32] = [0; 32];
     let transmitter = EthernetTransmitter::new(&eth, unsafe { &mut ETH_TRANS_BUFF }, 32);
