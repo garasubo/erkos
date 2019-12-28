@@ -236,7 +236,7 @@ impl Ethernet {
         }
     }
     
-    fn modify_phy_reg(&self, reg: u8, f: fn(u32) -> u32) {
+    fn modify_phy_reg<F>(&self, reg: u8, f: F) where F: FnOnce(u32) -> u32 {
         unsafe {
             self.mac.miiar.modify(|val| val & !(0x1f << 6) | ((reg as u32) << 6) & !(1 << 1) | 1);
             while self.mac.miiar.read() & 1 > 0 {}
@@ -264,8 +264,8 @@ impl Ethernet {
             self.modify_phy_reg(phy::REG_BCR, |val| val | (1 << 12) | (1 << 9));
 
             // configure mac
-            // CSTF, FES, DM, APCS, RE
-            self.mac.cr.modify(|val| val | (1 << 25) | (1 << 14) | (1 << 11) | (1 << 7) | (1 << 2));
+            // CSTF, FES, DM, APCS, RE, TE
+            self.mac.cr.modify(|val| val | (1 << 25) | (1 << 14) | (1 << 11) | (1 << 7) | (1 << 2) | (1 << 3));
 
             // RA, PM
             self.mac.ffr.modify(|val| val | (1 << 31) | 1);

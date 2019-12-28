@@ -10,3 +10,4 @@ embedded-hal = "0.2.2"
 nb = "0.1.2"
 rt = { path = "../rt" }
 volatile-register = "0.2.0"
+aligned = "0.3.2"
