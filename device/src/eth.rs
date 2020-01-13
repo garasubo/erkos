@@ -1,5 +1,6 @@
 use volatile_register::{RO, WO, RW};
-use core::ops::Deref;
+use core::ops::{Deref, DerefMut};
+use aligned::{Aligned, A8};
 
 #[repr(C)]
 pub struct EthernetMacRegister {
@@ -284,27 +285,108 @@ impl Ethernet {
     }
 }
 
+const VLAN_MAX_SIZE: usize = 1522;
+
+pub struct TxEntry {
+    desc: Aligned<A8, [u32; 4]>,
+    buff: Aligned<A8, [u8; VLAN_MAX_SIZE]>,
+}
+
+impl TxEntry {
+    fn get_packet(&mut self, length: usize) -> Option<TxPacket> {
+        if length > VLAN_MAX_SIZE {
+            return None;
+        }
+
+        if self.desc[0] & (1 << 31) == 0 {
+            Some(TxPacket{ entry: self, length })
+        } else {
+            None
+        }
+    }
+}
+
+pub struct TxPacket<'a> {
+    entry: &'a mut TxEntry,
+    length: usize,
+}
+
+impl<'a> TxPacket<'a> {
+    fn start_send(&mut self) {
+        // Set owned bit
+        self.entry.desc[0] |= 1 << 31;
+    }
+}
+
+impl<'a> Deref for TxPacket<'a> {
+    type Target = [u8];
+    fn deref(&self) -> &Self::Target {
+        &self.entry.buff[0..self.length]
+    }
+}
+
+impl<'a> DerefMut for TxPacket<'a> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.entry.buff[0..self.length]
+    }
+}
+
 pub struct EthernetTransmitter<'a> {
     eth: &'a Ethernet,
-    buff: &'static mut [u64],
+    entries: &'a mut [TxEntry],
     len: usize,
     pos: usize,
 }
 
+pub enum TxError {
+    NoBuffer,
+}
+
 impl<'a> EthernetTransmitter<'a> {
-    pub fn new(eth: &'a Ethernet, buff: &'static mut [u64], len: usize) -> EthernetTransmitter<'a> {
+    pub fn new(eth: &'a Ethernet, entries: &'a mut [TxEntry], len: usize) -> EthernetTransmitter<'a> {
         EthernetTransmitter {
             eth,
-            buff,
+            entries,
             len,
             pos: 0,
         }
     }
 
-    pub fn init(&self) {
-        let addr = &self.buff[0] as *const u64 as u32;
+    pub fn init(&mut self) {
+        for i in 0..self.len {
+            self.entries[i].desc[0] = 1 << 20;
+            self.entries[i].desc[1] = 0;
+            self.entries[i].desc[2] = 0;
+            self.entries[i].desc[3] = &self.entries[(i+1)%self.len].desc[0] as *const u32 as u32;
+        }
+        let addr = &self.entries[0].desc[0] as *const u32 as u32;
         unsafe {
             self.eth.dma.tdlar.write(addr);
+        }
+        self.pos = 0;
+        // enable TSF and ST
+        unsafe {
+            self.eth.dma.omr.modify(|v| v | (1 << 21) | (1 << 13));
+        }
+
+    }
+
+    pub fn send<F: FnOnce(&mut [u8]) -> R, R>(&mut self, length: usize, f: F) -> Result<R, TxError> {
+        let entries_len = self.entries.len();
+
+        match self.entries[self.pos].get_packet(length) {
+            Some(mut pkt) => {
+                let r = f(pkt.deref_mut());
+                pkt.start_send();
+
+                self.pos += 1;
+                if self.pos >= entries_len {
+                    self.pos = 0;
+                }
+                Ok(r)
+            }
+            None =>
+                Err(TxError::NoBuffer)
         }
     }
 }

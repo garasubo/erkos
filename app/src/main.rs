@@ -10,7 +10,7 @@ use arch::nvic::Nvic;
 use arch::systick::Systick;
 use core::fmt::Write as CoreWrite;
 use cortex_m_semihosting::hio::hstdout;
-use device::eth::{Ethernet, EthernetTransmitter};
+use device::eth::{Ethernet, EthernetTransmitter, TxEntry};
 use device::exti::Exti;
 use device::gpio::Gpio;
 use device::irq::IrqId;
@@ -32,6 +32,7 @@ use rt::entry;
 use user::syscall::*;
 use util::avl_tree::Node;
 use util::linked_list::ListItem;
+use core::mem::MaybeUninit;
 
 entry!(main);
 
@@ -164,9 +165,14 @@ pub fn main() -> ! {
     );
     let eth = Ethernet::new(0x4002_8000);
     eth.init();
-    #[link_section = ".uninit"]
-    static mut ETH_TRANS_BUFF: [u64; 32] = [0; 32];
-    let transmitter = EthernetTransmitter::new(&eth, unsafe { &mut ETH_TRANS_BUFF }, 32);
+    let mut ETH_TRANS_BUFF: [TxEntry; 32] = unsafe { MaybeUninit::uninit().assume_init() };
+    let mut transmitter = EthernetTransmitter::new(&eth, unsafe { &mut ETH_TRANS_BUFF }, 32);
+    transmitter.send(4, |buff| {
+        buff[0] = 0x1;
+        buff[1] = 0x2;
+        buff[2] = 0x3;
+        buff[3] = 0x4;
+    });
     unsafe {
         let sp: u32;
         asm!("mov $0, sp":"=r"(sp):::"volatile");
