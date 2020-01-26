@@ -10,7 +10,7 @@ use arch::nvic::Nvic;
 use arch::systick::Systick;
 use core::fmt::Write as CoreWrite;
 use cortex_m_semihosting::hio::hstdout;
-use device::eth::{Ethernet, EthernetTransmitter, TxEntry};
+use device::eth::{Ethernet, EthernetTransmitter, TxEntry, RxEntry};
 use device::exti::Exti;
 use device::gpio::Gpio;
 use device::irq::IrqId;
@@ -166,12 +166,17 @@ pub fn main() -> ! {
     let eth = Ethernet::new(0x4002_8000);
     eth.init();
     let mut ETH_TRANS_BUFF: [TxEntry; 32] = unsafe { MaybeUninit::uninit().assume_init() };
-    let mut transmitter = EthernetTransmitter::new(&eth, unsafe { &mut ETH_TRANS_BUFF }, 32);
+    let mut ETH_RECV_BUFF: [RxEntry; 32] = unsafe { MaybeUninit::uninit().assume_init() };
+    let mut transmitter = EthernetTransmitter::new(&eth, unsafe { &mut ETH_TRANS_BUFF }, unsafe { &mut ETH_RECV_BUFF },32);
     transmitter.send(4, |buff| {
         buff[0] = 0x1;
         buff[1] = 0x2;
         buff[2] = 0x3;
         buff[3] = 0x4;
+    });
+    transmitter.poll().and_then(|_| {
+        dhprintln!("receive packet");
+        Ok(())
     });
     unsafe {
         let sp: u32;

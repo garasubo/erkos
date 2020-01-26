@@ -313,8 +313,8 @@ pub struct TxPacket<'a> {
 
 impl<'a> TxPacket<'a> {
     fn start_send(&mut self) {
-        // Set owned bit
-        self.entry.desc[0] |= 1 << 31;
+        // Set owned bit, CIC, LS, FS
+        self.entry.desc[0] |= (1 << 31) | (0b11 << 22) | (1 << 29) | (1 << 28);
     }
 }
 
@@ -331,57 +331,141 @@ impl<'a> DerefMut for TxPacket<'a> {
     }
 }
 
+pub struct RxEntry {
+    desc: Aligned<A8, [u32; 4]>,
+    buff: Aligned<A8, [u8; VLAN_MAX_SIZE]>,
+}
+
+impl RxEntry {
+    pub fn poll(&mut self) -> Result<RxPacket, RxError> {
+        while self.desc[0] & (1 << 31) > 0 {}
+        // LS and FS are set
+        if self.desc[0] & (1 << 8) > 0 && self.desc[0] & (1 << 9) > 0 {
+            let frame_len = (self.desc[1] & 0xfff) as usize;
+            Ok(RxPacket{ entry: self, length: frame_len })
+        } else {
+            Err(RxError::NoBuffer)
+        }
+    }
+}
+
+pub struct RxPacket<'a> {
+    entry: &'a mut RxEntry,
+    length: usize,
+}
+
+impl<'a> RxPacket<'a> {
+}
+
+impl<'a> Deref for RxPacket<'a> {
+    type Target = [u8];
+    fn deref(&self) -> &Self::Target {
+        &self.entry.buff[0..self.length]
+    }
+}
+
+impl<'a> DerefMut for RxPacket<'a> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.entry.buff[0..self.length]
+    }
+}
+
+
 pub struct EthernetTransmitter<'a> {
     eth: &'a Ethernet,
-    entries: &'a mut [TxEntry],
+    tx_entries: &'a mut [TxEntry],
+    rx_entries: &'a mut [RxEntry],
     len: usize,
-    pos: usize,
+    tx_pos: usize,
+    rx_pos: usize,
 }
 
 pub enum TxError {
     NoBuffer,
 }
+pub enum RxError {
+    NoBuffer,
+}
 
 impl<'a> EthernetTransmitter<'a> {
-    pub fn new(eth: &'a Ethernet, entries: &'a mut [TxEntry], len: usize) -> EthernetTransmitter<'a> {
+    pub fn new(eth: &'a Ethernet, tx_entries: &'a mut [TxEntry], rx_entries: &'a mut [RxEntry], len: usize) -> EthernetTransmitter<'a> {
         EthernetTransmitter {
             eth,
-            entries,
+            tx_entries,
+            rx_entries,
             len,
-            pos: 0,
+            tx_pos: 0,
+            rx_pos: 0,
         }
     }
 
     pub fn init(&mut self) {
-        for i in 0..self.len {
-            self.entries[i].desc[0] = 1 << 20;
-            self.entries[i].desc[1] = 0;
-            self.entries[i].desc[2] = 0;
-            self.entries[i].desc[3] = &self.entries[(i+1)%self.len].desc[0] as *const u32 as u32;
+        for i in 0..self.tx_entries.len() {
+            // TCH
+            self.tx_entries[i].desc[0] = 1 << 20;
+            self.tx_entries[i].desc[1] = 0;
+            self.tx_entries[i].desc[2] = 0;
+            if i+1 != self.tx_entries.len() {
+                self.tx_entries[i].desc[3] = &self.tx_entries[i+1].desc[0] as *const u32 as u32;
+            } else {
+                self.tx_entries[i].desc[3] = 0;
+                // TER
+                self.tx_entries[i].desc[0] |= 1 << 21;
+            }
         }
-        let addr = &self.entries[0].desc[0] as *const u32 as u32;
-        unsafe {
-            self.eth.dma.tdlar.write(addr);
+        for i in 0..self.rx_entries.len() {
+            // OWN
+            self.rx_entries[i].desc[0] = 1 << 31;
+            // RCH and RBS (buffer size)
+            self.rx_entries[i].desc[1] = 1 << 14 | VLAN_MAX_SIZE as u32;
+            self.rx_entries[i].desc[2] = &self.rx_entries[i].buff[0] as *const u8 as u32;
+            if i+1 != self.rx_entries.len() {
+                self.rx_entries[i].desc[3] = &self.rx_entries[i+1].desc[0] as *const u32 as u32;
+            } else {
+                self.rx_entries[i].desc[3] = 0;
+                // RER
+                self.rx_entries[i].desc[1] |= 1 << 15;
+            }
         }
-        self.pos = 0;
-        // enable TSF and ST
+        let tx_addr = &self.tx_entries[0].desc[0] as *const u32 as u32;
+        let rx_addr = &self.rx_entries[0].desc[0] as *const u32 as u32;
         unsafe {
-            self.eth.dma.omr.modify(|v| v | (1 << 21) | (1 << 13));
+            self.eth.dma.tdlar.write(tx_addr);
+            self.eth.dma.rdlar.write(rx_addr);
+        }
+        self.tx_pos = 0;
+        // enable RSF, TSF, ST, SR
+        unsafe {
+            self.eth.dma.omr.modify(|v| v | (1 << 25) | (1 << 21) | (1 << 13) | (1 << 1));
         }
 
     }
 
-    pub fn send<F: FnOnce(&mut [u8]) -> R, R>(&mut self, length: usize, f: F) -> Result<R, TxError> {
-        let entries_len = self.entries.len();
+    pub fn poll(&mut self) -> Result<RxPacket, RxError> {
+        if self.eth.dma.sr.read() & (0b111 << 17) == 0 {
+            unsafe {
+                self.eth.dma.rpdr.write(1);
+            }
+        }
 
-        match self.entries[self.pos].get_packet(length) {
+        let rx_len = self.rx_entries.len();
+        let result = self.rx_entries[self.rx_pos].poll();
+        self.rx_pos += 1;
+        self.rx_pos %= rx_len;
+        result
+    }
+
+    pub fn send<F: FnOnce(&mut [u8]) -> R, R>(&mut self, length: usize, f: F) -> Result<R, TxError> {
+        let entries_len = self.tx_entries.len();
+
+        match self.tx_entries[self.tx_pos].get_packet(length) {
             Some(mut pkt) => {
                 let r = f(pkt.deref_mut());
                 pkt.start_send();
 
-                self.pos += 1;
-                if self.pos >= entries_len {
-                    self.pos = 0;
+                self.tx_pos += 1;
+                if self.tx_pos >= entries_len {
+                    self.tx_pos = 0;
                 }
                 Ok(r)
             }
