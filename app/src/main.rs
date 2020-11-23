@@ -42,7 +42,7 @@ pub fn main() -> ! {
     // let mut stdout = hstdout().unwrap();
     // write!(stdout, "Hello, world!").unwrap();
 
-    let process = process_create!(app_main, 1024);
+    //let process = process_create!(app_main, 1024);
     let tick_process = process_create!(tick, 1024);
     let button_process = process_create!(button_callback, 1024);
     let serial_process = process_create!(serial_func, 1024);
@@ -138,9 +138,27 @@ pub fn main() -> ! {
     for c in "hello world".chars() {
         serial.write(c).unwrap();
     }
+    let eth = Ethernet::new(0x4002_8000);
+    eth.init();
+    let mut ETH_TRANS_BUFF: [TxEntry; 32] = unsafe { MaybeUninit::uninit().assume_init() };
+    let mut ETH_RECV_BUFF: [RxEntry; 32] = unsafe { MaybeUninit::uninit().assume_init() };
+    let mut transmitter = EthernetTransmitter::new(&eth, unsafe { &mut ETH_TRANS_BUFF }, unsafe { &mut ETH_RECV_BUFF },32);
+    transmitter.init();
+    loop {
+        transmitter.poll().and_then(|pkt| {
+            for &p in pkt.iter() {
+                serial.write(p as char).unwrap();
+            }
+            Ok(())
+        }).unwrap_or_else(|_| {
+            for c in "error\r\n".chars() {
+                serial.write(c).unwrap();
+            }
+        });
+    }
     let mut scheduler = SimpleScheduler::new();
     let mut process_manager = ProcessManager::new();
-    process_register!(scheduler, process_manager, process);
+    //process_register!(scheduler, process_manager, process);
     process_register!(scheduler, process_manager, tick_process, tick_process_id);
     process_register!(scheduler, process_manager, serial_process);
     process_register!(scheduler, process_manager, button_process);
@@ -163,21 +181,6 @@ pub fn main() -> ! {
         process_manager,
         message_manager,
     );
-    let eth = Ethernet::new(0x4002_8000);
-    eth.init();
-    let mut ETH_TRANS_BUFF: [TxEntry; 32] = unsafe { MaybeUninit::uninit().assume_init() };
-    let mut ETH_RECV_BUFF: [RxEntry; 32] = unsafe { MaybeUninit::uninit().assume_init() };
-    let mut transmitter = EthernetTransmitter::new(&eth, unsafe { &mut ETH_TRANS_BUFF }, unsafe { &mut ETH_RECV_BUFF },32);
-    transmitter.send(4, |buff| {
-        buff[0] = 0x1;
-        buff[1] = 0x2;
-        buff[2] = 0x3;
-        buff[3] = 0x4;
-    });
-    transmitter.poll().and_then(|_| {
-        dhprintln!("receive packet");
-        Ok(())
-    });
     unsafe {
         let sp: u32;
         asm!("mov $0, sp":"=r"(sp):::"volatile");
