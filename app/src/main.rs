@@ -39,8 +39,8 @@ entry!(main);
 static mut TICK_PROCESS_ID: u32 = 0;
 
 pub fn main() -> ! {
-    // let mut stdout = hstdout().unwrap();
-    // write!(stdout, "Hello, world!").unwrap();
+    //let mut stdout = hstdout().unwrap();
+    //write!(stdout, "Hello, world!").unwrap();
 
     //let process = process_create!(app_main, 1024);
     let tick_process = process_create!(tick, 1024);
@@ -54,11 +54,12 @@ pub fn main() -> ! {
         registers.apb1enr.write(1 << 18);
         // enable SYSCFG
         registers.apb2enr.write(1 << 14);
+        // select RMII mode
         syscfg.pmc.modify(|val| val | (1 << 23));
         // enable GPIOA - GPIOE, GPIOG-GPIOI, ETH and DMA1
         registers
             .ahb1enr
-            .write(0b1_1101_1111 | (1 << 21) | (0b1111 << 25));
+            .write(0b1_1101_1111 | (1 << 21) | (0b0111 << 25));
     }
 
     let mut serial = Serial::usart3();
@@ -66,15 +67,13 @@ pub fn main() -> ! {
     let val = systick.get_ticks_per_10ms();
     systick.clear_current();
     systick.set_reload(val * 100);
-    systick.enable();
+    // systick.enable();
     let gpioa = Gpio::new(0x4002_0000);
     let gpiob = Gpio::new(0x4002_0400);
     let gpioc = Gpio::new(0x4002_0800);
     let gpiod = Gpio::new(0x4002_0c00);
     let gpioe = Gpio::new(0x4002_1000);
     let gpiog = Gpio::new(0x4002_1800);
-    let gpioh = Gpio::new(0x4002_1c00);
-    let gpioi = Gpio::new(0x4002_2000);
     let exti = Exti::new(0x4001_3C00);
     // For LED
     unsafe {
@@ -97,53 +96,51 @@ pub fn main() -> ! {
     }
     // For nic
     unsafe {
-        gpioa.moder.modify(|val| (val | 0b10101010 | (0b10 << 14)));
+        // pa1, pa2, pa7
+        gpioa.moder.modify(|val| (val | 0b101000 | (0b10 << 14)));
+        // AF11
         gpioa
             .afrl
-            .modify(|val| (val | 0b1011_1011_1011_1011 | (0b1011 << 28)));
+            .modify(|val| (val | 0b0000_1011_1011_0000 | (0b1011 << 28)));
+        gpioa.ospeedr.modify(|val| val | 0b111100 | (0b11 << 14));
+        // pb13 (RMII TXD1)
         gpiob
             .moder
-            .modify(|val| val | 0b1010 | (0b10 << 10) | (0b10 << 16) | (0b10101010 << 20));
-        gpiob
-            .afrl
-            .modify(|val| (val | 0b1011_1011 | (0b1011 << 20)));
+            .modify(|val| val | (0b10 << 26));
+        // AF11 for pb13
         gpiob
             .afrh
-            .modify(|val| (val | 0b1011 | (0b1011_1011_1011_1011 << 8)));
-        gpioc.moder.modify(|val| val | (0b1010101010 << 2));
+            .modify(|val| (val | (0b1011 << 20)));
+        gpiob.ospeedr.modify(|val| val | (0b11 << 13));
+        // pc1, 4, 5
+        gpioc.moder.modify(|val| val | (0b10_10_00_00_10_00));
+        // AF11 for pc1, 4, 5
         gpioc
             .afrl
-            .modify(|val| val | (0b1011_1011_1011_1011_1011 << 4));
-        gpioe.moder.modify(|val| val | (0x10 << 4));
-        gpioe.afrl.modify(|val| val | (0b1011 << 8));
+            .modify(|val| val | (0b1011_1011_0000_0000_1011 << 4));
+        gpioc.ospeedr.modify(|val| val | (0b11_11_00_00_11_00));
+        // pg11, pg13(RMII TX_EN, TXD0)
         gpiog
             .moder
-            .modify(|val| val | (0b10 << 16) | (0b10 << 22) | (0b1010 << 26));
+            .modify(|val| val | (0b10 << 22) | (0b10_10 << 26));
         gpiog
             .afrh
-            .modify(|val| val | 0b1011 | (0b1011 << 12) | (0b1011_1011 << 20));
-        gpioh
-            .moder
-            .modify(|val| val | (0x1010 << 4) | (0x1010 << 12));
-        gpioh
-            .afrl
-            .modify(|val| val | (0b1011_1011 << 8) | (0b1011_1011 << 24));
-        gpioi.moder.modify(|val| val | (0b10 << 20));
-        gpioi.afrh.modify(|val| val | (0b1011 << 8));
+            .modify(|val| val | (0b1011 << 12) | (0b1011_1011 << 20));
+        gpiog.ospeedr.modify(|val| val | (0b11 << 22) | (0b11 << 26));
         registers.ahb1rstr.modify(|val| val | (1 << 25));
         registers.ahb1rstr.modify(|val| val & !(1 << 25));
     }
     let nvic = Nvic::new();
     // serial.send_buffer("hello dma world\r\n".as_bytes());
-    for c in "hello world".chars() {
-        serial.write(c).unwrap();
-    }
     let eth = Ethernet::new(0x4002_8000);
     eth.init();
-    let mut ETH_TRANS_BUFF: [TxEntry; 32] = unsafe { MaybeUninit::uninit().assume_init() };
-    let mut ETH_RECV_BUFF: [RxEntry; 32] = unsafe { MaybeUninit::uninit().assume_init() };
-    let mut transmitter = EthernetTransmitter::new(&eth, unsafe { &mut ETH_TRANS_BUFF }, unsafe { &mut ETH_RECV_BUFF },32);
+    let mut ETH_TRANS_BUFF: [TxEntry; 2] = Default::default();
+    let mut ETH_RECV_BUFF: [RxEntry; 8] = Default::default(); 
+    let mut transmitter = EthernetTransmitter::new(&eth, unsafe { &mut ETH_TRANS_BUFF }, unsafe { &mut ETH_RECV_BUFF });
     transmitter.init();
+    for c in "hello world\n".chars() {
+        serial.write(c).unwrap();
+    }
     loop {
         transmitter.poll().and_then(|pkt| {
             for &p in pkt.iter() {
