@@ -256,7 +256,7 @@ impl Ethernet {
             while self.dma.bmr.read() & 1 > 0 {}
             
             // hclk div 16
-            self.mac.miiar.modify(|val| val & !(0b11 << 2) | 0b010 << 2);
+            self.mac.miiar.modify(|val| (val & !(0b11 << 2)) | 0b010 << 2);
 
             // reset phy
             // set soft reset
@@ -299,7 +299,11 @@ impl TxEntry {
             return None;
         }
 
-        if self.desc[0] & (1 << 31) == 0 {
+        let ptr = &self.desc[0] as *const u32;
+        if unsafe { core::ptr::read_volatile(ptr) } & (1 << 31) == 0 {
+            self.desc[1] &= !0x1fff;
+            self.desc[1] |= length as u32;
+            self.desc[2] = self.buff.as_ptr() as u32;
             Some(TxPacket{ entry: self, length })
         } else {
             None
@@ -324,8 +328,12 @@ pub struct TxPacket<'a> {
 
 impl<'a> TxPacket<'a> {
     fn start_send(&mut self) {
+        let ptr = &mut self.entry.desc[0] as *mut u32;
+        let value = unsafe { core::ptr::read_volatile(ptr) };
+        let value = value | (1 << 29) | (1 << 28);
+        unsafe { core::ptr::write_volatile(ptr, value) };
         // Set owned bit, CIC, LS, FS
-        self.entry.desc[0] |= (1 << 31) | (0b11 << 22) | (1 << 29) | (1 << 28);
+        unsafe { core::ptr::write_volatile(ptr, value | (1 << 31)) };
     }
 }
 
@@ -445,7 +453,7 @@ impl<'a> EthernetTransmitter<'a> {
             self.rx_entries[i].desc[0] = 1 << 31;
             // RCH and RBS (buffer size)
             self.rx_entries[i].desc[1] = 1 << 14 | VLAN_MAX_SIZE as u32;
-            self.rx_entries[i].desc[2] = &self.rx_entries[i].buff[0] as *const u8 as u32;
+            self.rx_entries[i].desc[2] = self.rx_entries[i].buff.as_ptr() as u32;
             if i+1 != self.rx_entries.len() {
                 self.rx_entries[i].desc[3] = &self.rx_entries[i+1].desc[0] as *const u32 as u32;
             } else {
@@ -470,7 +478,7 @@ impl<'a> EthernetTransmitter<'a> {
 
     pub fn poll(&mut self) -> Result<RxPacket, RxError> {
         let running_state = self.eth.dma.sr.read() & (0b111 << 17) >> 17;
-        if running_state != 0b001 && running_state != 0b011 && running_state != 101 && running_state != 111 {
+        if running_state != 0b001 && running_state != 0b011 && running_state != 0b101 && running_state != 0b111 {
             unsafe {
                 self.eth.dma.rpdr.write(1);
             }
@@ -484,21 +492,28 @@ impl<'a> EthernetTransmitter<'a> {
     }
 
     pub fn send<F: FnOnce(&mut [u8]) -> R, R>(&mut self, length: usize, f: F) -> Result<R, TxError> {
-        let entries_len = self.tx_entries.len();
-
         match self.tx_entries[self.tx_pos].get_packet(length) {
             Some(mut pkt) => {
                 let r = f(pkt.deref_mut());
                 pkt.start_send();
+                unsafe {
+                    self.eth.dma.tpdr.write(1);
+                }
 
                 self.tx_pos += 1;
-                if self.tx_pos >= entries_len {
-                    self.tx_pos = 0;
-                }
+                self.tx_pos %= self.tx_entries.len();
                 Ok(r)
             }
             None =>
                 Err(TxError::NoBuffer)
+        }
+    }
+
+    pub fn is_tx_running(&self) -> bool {
+        let running_state = (self.eth.dma.sr.read() & (0b111 << 20)) >> 20;
+        match running_state {
+            0b001 | 0b010 | 0b011 | 0b111 => true,
+            _ => false,
         }
     }
 }

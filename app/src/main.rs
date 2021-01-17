@@ -111,7 +111,7 @@ pub fn main() -> ! {
         gpiob
             .afrh
             .modify(|val| (val | (0b1011 << 20)));
-        gpiob.ospeedr.modify(|val| val | (0b11 << 13));
+        gpiob.ospeedr.modify(|val| val | (0b11 << 26));
         // pc1, 4, 5
         gpioc.moder.modify(|val| val | (0b10_10_00_00_10_00));
         // AF11 for pc1, 4, 5
@@ -135,11 +135,22 @@ pub fn main() -> ! {
     let eth = Ethernet::new(0x4002_8000);
     eth.init();
     let mut ETH_TRANS_BUFF: [TxEntry; 2] = Default::default();
-    let mut ETH_RECV_BUFF: [RxEntry; 8] = Default::default(); 
+    let mut ETH_RECV_BUFF: [RxEntry; 4] = Default::default(); 
     let mut transmitter = EthernetTransmitter::new(&eth, unsafe { &mut ETH_TRANS_BUFF }, unsafe { &mut ETH_RECV_BUFF });
     transmitter.init();
     for c in "hello world\n".chars() {
         serial.write(c).unwrap();
+    }
+    let message = "say hello\n\r";
+    loop {
+        transmitter.send(message.as_bytes().len(), |buff| {
+            buff.copy_from_slice(message.as_bytes());
+        }).unwrap_or_else(|_| {
+            for c in "error\r\n".chars() {
+                serial.write(c).unwrap();
+            }
+        });
+        while transmitter.is_tx_running() {}
     }
     loop {
         transmitter.poll().and_then(|pkt| {
