@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 arch = { path = "../arch" }
-device = { path = "../device" }
+stm32f429zi = { path = "../devices/stm32f429zi" }
 rt = { path = "../rt" }
 log = { path = "../log" }
 kernel = { path = "../kernel" }

@@ -2,7 +2,8 @@
 members = [
     "app",
     "arch",
-    "device",
+    "devices/stm32f429zi",
+    "devices/wio_terminal",
     "kernel",
     "log",
     "qemu_app",
