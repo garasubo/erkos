@@ -50,7 +50,7 @@ pub fn receive_message() -> Option<u32> {
 }
 
 pub fn wait_for_interrupt(id: u32) {
-    unsafe{
+    unsafe {
         asm!(
             "
             svc 1
@@ -62,7 +62,7 @@ pub fn wait_for_interrupt(id: u32) {
 }
 
 pub fn wait_for_event() {
-    unsafe{
+    unsafe {
         asm!(
             "
             svc 1
@@ -74,7 +74,7 @@ pub fn wait_for_event() {
 }
 
 pub fn wait_for_systick() {
-    unsafe{
+    unsafe {
         asm!(
             "
             svc 1

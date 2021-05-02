@@ -1,7 +1,7 @@
-use arch::nvic::Nvic;
-use rt::Vector;
-use core::mem;
 use crate::process_list::{ProcessList, ProcessListItem};
+use arch::nvic::Nvic;
+use core::mem;
+use rt::Vector;
 
 extern "C" {
     static mut IRQS: [Vector; 240];
@@ -35,10 +35,18 @@ impl<'a> InterruptManager<'a> {
     pub fn register(&mut self, id: u32, func: fn()) {
         if self.handler_count >= 10 {
             panic!("limit exceed");
-        }        
-        unsafe { IRQS[id as usize] = Vector { handler: DefaultIrqHandler }; }
+        }
+        unsafe {
+            IRQS[id as usize] = Vector {
+                handler: DefaultIrqHandler,
+            };
+        }
         self.nvic.enable(id);
-        self.handlers[self.handler_count] = InterruptHandler { id, func, waiting: ProcessList::new() };
+        self.handlers[self.handler_count] = InterruptHandler {
+            id,
+            func,
+            waiting: ProcessList::new(),
+        };
         self.handler_count += 1;
     }
 
@@ -90,5 +98,4 @@ pub unsafe extern "C" fn DefaultIrqHandler() {
         str r0, [r2, r1, lsl #2]
         "
     ::::"volatile");
-    
 }

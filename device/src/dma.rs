@@ -1,6 +1,6 @@
-use volatile_register::{RO, WO, RW};
-use core::ops::Deref;
 use core::marker::PhantomData;
+use core::ops::Deref;
+use volatile_register::{RO, RW, WO};
 
 #[repr(C)]
 pub struct DmaRegisters {
@@ -79,7 +79,6 @@ impl Deref for Dma {
     }
 }
 
-
 impl Dma {
     pub const fn new(base: u32) -> Dma {
         Dma { base }
@@ -94,7 +93,7 @@ pub enum Stream3 {}
 
 pub struct DmaClient<Stream> {
     dma: Dma,
-    _data: PhantomData<Stream>
+    _data: PhantomData<Stream>,
 }
 
 impl DmaClient<Stream3> {
@@ -124,18 +123,20 @@ impl Client for DmaClient<Stream3> {
             // set the number of items
             self.dma.s3ndtr.write(buffer.len() as u32);
             // set the channel
-            self.dma.s3cr.modify(|r| r & !(0b11 << 25) | ((channel as u32) << 25));
-            // set direction 
+            self.dma
+                .s3cr
+                .modify(|r| r & !(0b11 << 25) | ((channel as u32) << 25));
+            // set direction
             self.dma.s3cr.modify(|r| r & !(0b11 << 6) | (0b01 << 6)); // memory to peripheral
-            // set increment mode
-            self.dma.s3cr.modify(|r| r | (1 <<  10)); // memory increment
+                                                                      // set increment mode
+            self.dma.s3cr.modify(|r| r | (1 << 10)); // memory increment
             self.dma.s3cr.modify(|r| r & !(1 << 9)); // peripheral not increment
-            // set data length
+                                                     // set data length
             self.dma.s3cr.modify(|r| r & !(0b11 << 11)); // psize is byte
             self.dma.s3cr.modify(|r| r & !(0b11 << 13)); // msize is byte
-            // set transmit complete interrupt enable
-            // self.dma.s3cr.modify(|r| r | (1 << 4));
-            
+                                                         // set transmit complete interrupt enable
+                                                         // self.dma.s3cr.modify(|r| r | (1 << 4));
+
             // enable dma
             self.dma.s3cr.modify(|r| r | 1);
         }

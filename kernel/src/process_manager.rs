@@ -17,7 +17,7 @@ impl<'a, P> ProcessManager<'a, P> {
         }
     }
 
-    pub fn register(&mut self, node: &'a mut Node<'a, ProcessId, P>)-> ProcessId {
+    pub fn register(&mut self, node: &'a mut Node<'a, ProcessId, P>) -> ProcessId {
         let id = ProcessId(self.count);
         node.item.0 = id.clone();
         self.map.insert(node);
@@ -28,7 +28,7 @@ impl<'a, P> ProcessManager<'a, P> {
     pub fn get(&self, id: &ProcessId) -> Option<&P> {
         self.map.get(id)
     }
-    
+
     pub fn borrow(&self, id: &ProcessId) -> Option<&'a P> {
         self.map.borrow(id)
     }
@@ -36,7 +36,7 @@ impl<'a, P> ProcessManager<'a, P> {
     pub fn get_mut(&mut self, id: &ProcessId) -> Option<&mut P> {
         self.map.get_mut(id)
     }
-    
+
     pub fn borrow_mut(&mut self, id: &ProcessId) -> Option<&'a mut P> {
         self.map.borrow_mut(id)
     }

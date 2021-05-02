@@ -4,9 +4,9 @@
 #![no_std]
 #![feature(asm)]
 
-use cortex_m_semihosting::debug;
 use core::panic::PanicInfo;
 use core::ptr;
+use cortex_m_semihosting::debug;
 use log::dhprintln;
 
 #[no_mangle]
@@ -25,7 +25,11 @@ pub unsafe extern "C" fn Reset() -> ! {
     }
 
     let count = &_evector_table as *const u8 as usize - &_svector_table as *const u8 as usize;
-    ptr::copy_nonoverlapping(&_sivector_table as *const u8, &mut _svector_table as *mut u8, count);
+    ptr::copy_nonoverlapping(
+        &_sivector_table as *const u8,
+        &mut _svector_table as *mut u8,
+        count,
+    );
     let count = &_eirq_table as *const u8 as usize - &_sirq_table as *const u8 as usize;
     ptr::write_bytes(&mut _sirq_table as *mut u8, 0, count);
     // write to VTOR
@@ -69,7 +73,7 @@ macro_rules! entry {
             test_main();
             loop {}
         }
-    }
+    };
 }
 
 #[repr(C)]
@@ -95,7 +99,9 @@ pub static EXCEPTIONS: [Vector; 14] = [
     Vector { handler: HardFault },
     Vector { handler: MemManage },
     Vector { handler: BusFault },
-    Vector { handler: UsageFault },
+    Vector {
+        handler: UsageFault,
+    },
     Vector { reserved: 0 },
     Vector { reserved: 0 },
     Vector { reserved: 0 },
@@ -147,7 +153,6 @@ pub unsafe extern "C" fn SVCall() {
         "
     ::::"volatile");
 }
-
 
 pub fn test_runner(tests: &[&dyn Fn()]) {
     dhprintln!("Running {} tests", tests.len());

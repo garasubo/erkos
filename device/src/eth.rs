@@ -1,13 +1,13 @@
-use volatile_register::{RO, WO, RW};
-use core::ops::{Deref, DerefMut};
 use aligned::{Aligned, A8};
+use core::ops::{Deref, DerefMut};
+use volatile_register::{RO, RW, WO};
 
 #[repr(C)]
 pub struct EthernetMacRegister {
     cr: RW<u32>,
-    ffr:RW<u32>,
-    hthr:RW<u32>,
-    htlr:RW<u32>,
+    ffr: RW<u32>,
+    hthr: RW<u32>,
+    htlr: RW<u32>,
 
     miiar: RW<u32>,
     miidr: RW<u32>,
@@ -18,7 +18,7 @@ pub struct EthernetMacRegister {
     _reserved0: u64,
     rwuffr: RW<u32>,
     pmtcsr: RW<u32>,
-    
+
     _reserved1: u32,
     dbgr: RW<u32>,
     sr: RW<u32>,
@@ -208,20 +208,23 @@ pub mod phy {
     pub const REG_SCSR: u8 = 31;
 }
 
-
 impl Ethernet {
     pub const fn new(base: u32) -> Ethernet {
-        Ethernet { 
+        Ethernet {
             mac: EthernetMac { base },
             mmc: EthernetMmc { base: base + 0x100 },
             ptp: EthernetPtp { base: base + 0x700 },
-            dma: EthernetDma { base: base + 0x1000 },
+            dma: EthernetDma {
+                base: base + 0x1000,
+            },
         }
     }
 
     fn read_phy_reg(&self, reg: u8) -> u32 {
         unsafe {
-            self.mac.miiar.modify(|val| (val & !(0x1f << 6) | ((reg as u32) << 6)) & !(1 << 1) | 1);
+            self.mac
+                .miiar
+                .modify(|val| (val & !(0x1f << 6) | ((reg as u32) << 6)) & !(1 << 1) | 1);
             while self.mac.miiar.read() & 1 > 0 {}
             // wait until MB is cleared
             self.mac.miidr.read()
@@ -231,20 +234,29 @@ impl Ethernet {
     fn write_phy_reg(&self, reg: u8, data: u32) {
         unsafe {
             self.mac.miidr.write(data);
-            self.mac.miiar.modify(|val| val & !(0x1f << 6) | ((reg as u32) << 6) | (1 << 1) | 1);
+            self.mac
+                .miiar
+                .modify(|val| val & !(0x1f << 6) | ((reg as u32) << 6) | (1 << 1) | 1);
             // wait until MB is cleared
             while self.mac.miiar.read() & 1 > 0 {}
         }
     }
-    
-    fn modify_phy_reg<F>(&self, reg: u8, f: F) where F: FnOnce(u32) -> u32 {
+
+    fn modify_phy_reg<F>(&self, reg: u8, f: F)
+    where
+        F: FnOnce(u32) -> u32,
+    {
         unsafe {
-            self.mac.miiar.modify(|val| (val & !(0x1f << 6) | ((reg as u32) << 6)) & !(1 << 1) | 1);
+            self.mac
+                .miiar
+                .modify(|val| (val & !(0x1f << 6) | ((reg as u32) << 6)) & !(1 << 1) | 1);
             while self.mac.miiar.read() & 1 > 0 {}
             // wait until MB is cleared
             let val = self.mac.miidr.read();
             self.mac.miidr.write(f(val));
-            self.mac.miiar.modify(|val| val & !(0x1f << 6) | ((reg as u32) << 6) | (1 << 1) | 1);
+            self.mac
+                .miiar
+                .modify(|val| val & !(0x1f << 6) | ((reg as u32) << 6) | (1 << 1) | 1);
             while self.mac.miiar.read() & 1 > 0 {}
         }
     }
@@ -254,9 +266,11 @@ impl Ethernet {
             // reset dma
             self.dma.bmr.modify(|val| val | 1);
             while self.dma.bmr.read() & 1 > 0 {}
-            
+
             // hclk div 16
-            self.mac.miiar.modify(|val| (val & !(0b11 << 2)) | 0b010 << 2);
+            self.mac
+                .miiar
+                .modify(|val| (val & !(0b11 << 2)) | 0b010 << 2);
 
             // reset phy
             // set soft reset
@@ -266,19 +280,33 @@ impl Ethernet {
 
             // configure mac
             // CSTF, FES, DM, APCS, RE, TE
-            self.mac.cr.modify(|val| val | (1 << 25) | (1 << 14) | (1 << 11) | (1 << 7) | (1 << 2) | (1 << 3));
+            self.mac.cr.modify(|val| {
+                val | (1 << 25) | (1 << 14) | (1 << 11) | (1 << 7) | (1 << 2) | (1 << 3)
+            });
 
             // RA, PM
             self.mac.ffr.modify(|val| val | (1 << 31) | 1);
-            
+
             // set pause time 100
-            self.mac.fcr.modify(|val| (val & !(0xffff << 16)) | (0x100 << 16));
+            self.mac
+                .fcr
+                .modify(|val| (val & !(0xffff << 16)) | (0x1000 << 16));
 
             // DTCEFD, RSF, DFRF, TSF, FEF, OSF
-            self.dma.omr.modify(|val| val | (1 << 26) |(1 << 25) | (1 << 24) | (1 << 21) | (1 << 7) | (1 << 2));
+            self.dma.omr.modify(|val| {
+                val | (1 << 26) | (1 << 25) | (1 << 24) | (1 << 21) | (1 << 7) | (1 << 2)
+            });
 
             // AAB, FB, RDP = 32, PBL = 32, PM = 01, USP
-            self.dma.bmr.modify(|val| (val & !(0x3f << 8) & !(0b11 << 14) & !(0x3f << 17)) | (1 << 25) | (1 << 16)  | (32 << 17) | (32 << 8) | (0b01 << 14) | (1 << 23));
+            self.dma.bmr.modify(|val| {
+                (val & !(0x3f << 8) & !(0b11 << 14) & !(0x3f << 17))
+                    | (1 << 25)
+                    | (1 << 16)
+                    | (32 << 17)
+                    | (32 << 8)
+                    | (0b01 << 14)
+                    | (1 << 23)
+            });
 
             while self.read_phy_reg(phy::REG_SCSR) & (1 << 12) == 0 {}
         }
@@ -304,7 +332,29 @@ impl TxEntry {
             self.desc[1] &= !0x1fff;
             self.desc[1] |= length as u32;
             self.desc[2] = self.buff.as_ptr() as u32;
-            Some(TxPacket{ entry: self, length })
+            Some(TxPacket {
+                entry: self,
+                length,
+            })
+        } else {
+            None
+        }
+    }
+    fn get_packet_with<'a>(&'a mut self, buff: &'a [u8]) -> Option<TxPacket> {
+        let length = buff.len();
+        if length > VLAN_MAX_SIZE {
+            return None;
+        }
+
+        let ptr = &self.desc[0] as *const u32;
+        if unsafe { core::ptr::read_volatile(ptr) } & (1 << 31) == 0 {
+            self.desc[1] &= !0x1fff;
+            self.desc[1] |= length as u32;
+            self.desc[2] = buff.as_ptr() as u32;
+            Some(TxPacket {
+                entry: self,
+                length,
+            })
         } else {
             None
         }
@@ -319,7 +369,6 @@ impl Default for TxEntry {
         }
     }
 }
-
 
 pub struct TxPacket<'a> {
     entry: &'a mut TxEntry,
@@ -363,7 +412,10 @@ impl RxEntry {
         // LS and FS are set
         if self.desc[0] & (1 << 8) > 0 && self.desc[0] & (1 << 9) > 0 {
             let frame_len = (self.desc[1] & 0xfff) as usize;
-            Ok(RxPacket{ entry: self, length: frame_len })
+            Ok(RxPacket {
+                entry: self,
+                length: frame_len,
+            })
         } else {
             Err(RxError::NoBuffer)
         }
@@ -384,8 +436,7 @@ pub struct RxPacket<'a> {
     length: usize,
 }
 
-impl<'a> RxPacket<'a> {
-}
+impl<'a> RxPacket<'a> {}
 
 impl<'a> Deref for RxPacket<'a> {
     type Target = [u8];
@@ -407,7 +458,6 @@ impl<'a> Drop for RxPacket<'a> {
     }
 }
 
-
 pub struct EthernetTransmitter<'a> {
     eth: &'a Ethernet,
     tx_entries: &'a mut [TxEntry],
@@ -424,7 +474,11 @@ pub enum RxError {
 }
 
 impl<'a> EthernetTransmitter<'a> {
-    pub fn new(eth: &'a Ethernet, tx_entries: &'a mut [TxEntry], rx_entries: &'a mut [RxEntry]) -> EthernetTransmitter<'a> {
+    pub fn new(
+        eth: &'a Ethernet,
+        tx_entries: &'a mut [TxEntry],
+        rx_entries: &'a mut [RxEntry],
+    ) -> EthernetTransmitter<'a> {
         EthernetTransmitter {
             eth,
             tx_entries,
@@ -440,8 +494,8 @@ impl<'a> EthernetTransmitter<'a> {
             self.tx_entries[i].desc[0] = 1 << 20;
             self.tx_entries[i].desc[1] = 0;
             self.tx_entries[i].desc[2] = 0;
-            if i+1 != self.tx_entries.len() {
-                self.tx_entries[i].desc[3] = &self.tx_entries[i+1].desc[0] as *const u32 as u32;
+            if i + 1 != self.tx_entries.len() {
+                self.tx_entries[i].desc[3] = &self.tx_entries[i + 1].desc[0] as *const u32 as u32;
             } else {
                 self.tx_entries[i].desc[3] = 0;
                 // TER
@@ -454,8 +508,8 @@ impl<'a> EthernetTransmitter<'a> {
             // RCH and RBS (buffer size)
             self.rx_entries[i].desc[1] = 1 << 14 | VLAN_MAX_SIZE as u32;
             self.rx_entries[i].desc[2] = self.rx_entries[i].buff.as_ptr() as u32;
-            if i+1 != self.rx_entries.len() {
-                self.rx_entries[i].desc[3] = &self.rx_entries[i+1].desc[0] as *const u32 as u32;
+            if i + 1 != self.rx_entries.len() {
+                self.rx_entries[i].desc[3] = &self.rx_entries[i + 1].desc[0] as *const u32 as u32;
             } else {
                 self.rx_entries[i].desc[3] = 0;
                 // RER
@@ -473,12 +527,15 @@ impl<'a> EthernetTransmitter<'a> {
         unsafe {
             self.eth.dma.omr.modify(|v| v | (1 << 13) | (1 << 1));
         }
-
     }
 
     pub fn poll(&mut self) -> Result<RxPacket, RxError> {
         let running_state = self.eth.dma.sr.read() & (0b111 << 17) >> 17;
-        if running_state != 0b001 && running_state != 0b011 && running_state != 0b101 && running_state != 0b111 {
+        if running_state != 0b001
+            && running_state != 0b011
+            && running_state != 0b101
+            && running_state != 0b111
+        {
             unsafe {
                 self.eth.dma.rpdr.write(1);
             }
@@ -491,7 +548,27 @@ impl<'a> EthernetTransmitter<'a> {
         result
     }
 
-    pub fn send<F: FnOnce(&mut [u8]) -> R, R>(&mut self, length: usize, f: F) -> Result<R, TxError> {
+    pub fn send_buff(&mut self, buff: &'a [u8]) -> Result<(), TxError> {
+        match self.tx_entries[self.tx_pos].get_packet_with(buff) {
+            Some(mut pkt) => {
+                pkt.start_send();
+                unsafe {
+                    self.eth.dma.tpdr.write(1);
+                }
+
+                self.tx_pos += 1;
+                self.tx_pos %= self.tx_entries.len();
+                Ok(())
+            }
+            None => Err(TxError::NoBuffer),
+        }
+    }
+
+    pub fn send<F: FnOnce(&mut [u8]) -> R, R>(
+        &mut self,
+        length: usize,
+        f: F,
+    ) -> Result<R, TxError> {
         match self.tx_entries[self.tx_pos].get_packet(length) {
             Some(mut pkt) => {
                 let r = f(pkt.deref_mut());
@@ -504,8 +581,7 @@ impl<'a> EthernetTransmitter<'a> {
                 self.tx_pos %= self.tx_entries.len();
                 Ok(r)
             }
-            None =>
-                Err(TxError::NoBuffer)
+            None => Err(TxError::NoBuffer),
         }
     }
 

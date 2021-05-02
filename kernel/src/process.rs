@@ -53,7 +53,6 @@ impl<'a> Process<'a> {
         }
     }
 
-
     pub fn execute(&mut self) {
         self.sp = unsafe { execute_process(self.sp, self.regs) };
     }

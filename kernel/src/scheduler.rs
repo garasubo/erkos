@@ -1,5 +1,5 @@
 use crate::process_list::{ProcessList, ProcessListItem};
-use crate::process_manager::{ProcessId};
+use crate::process_manager::ProcessId;
 
 pub mod simple_scheduler;
 

@@ -1,9 +1,9 @@
 #![no_std]
 #![crate_type = "rlib"]
 
-pub mod linked_list;
-pub mod binary_tree;
 pub mod avl_tree;
+pub mod binary_tree;
+pub mod linked_list;
 
 // copied from https://github.com/tock/tock
 macro_rules! static_init {

@@ -1,8 +1,8 @@
+use crate::binary_tree::BinaryTree;
+use core::cmp;
 use core::mem;
 use core::ops::{Deref, DerefMut};
 use core::ptr::NonNull;
-use core::cmp;
-use crate::binary_tree::BinaryTree;
 
 pub struct Node<'a, K, V> {
     pub item: (K, V),
@@ -29,11 +29,11 @@ impl<'a, K, V> Node<'a, K, V> {
     }
 
     fn get_parent_ref(&self) -> Option<&Node<'a, K, V>> {
-        self.parent.as_ref().map(|ptr| unsafe {  ptr.as_ref() })
+        self.parent.as_ref().map(|ptr| unsafe { ptr.as_ref() })
     }
 
     fn get_parent_mut(&mut self) -> Option<&mut Node<'a, K, V>> {
-        self.parent.as_mut().map(|ptr| unsafe {  ptr.as_mut() })
+        self.parent.as_mut().map(|ptr| unsafe { ptr.as_mut() })
     }
 
     fn get_min_child(&self) -> &Node<'a, K, V> {
@@ -53,12 +53,15 @@ impl<'a, K, V> Node<'a, K, V> {
     }
 
     fn update_height(&mut self) {
-        self.height = 1 + cmp::max(self.left.as_ref().map(|n| n.height).unwrap_or(0), self.right.as_ref().map(|n| n.height).unwrap_or(0));
+        self.height = 1 + cmp::max(
+            self.left.as_ref().map(|n| n.height).unwrap_or(0),
+            self.right.as_ref().map(|n| n.height).unwrap_or(0),
+        );
         self.get_parent_mut().map(|p| p.update_height());
     }
 
-    fn rotate_right(&mut self) ->  bool {
-       if self.left.is_none() {
+    fn rotate_right(&mut self) -> bool {
+        if self.left.is_none() {
             return false;
         }
 
@@ -67,20 +70,25 @@ impl<'a, K, V> Node<'a, K, V> {
 
         mem::swap(self, left_node_ref);
         self.parent = None;
-        let self_ptr = unsafe {NonNull::new_unchecked(self as *mut Node<'a, K, V>)};
+        let self_ptr = unsafe { NonNull::new_unchecked(self as *mut Node<'a, K, V>) };
         left_node_ref.parent = Some(self_ptr);
         let left_right_node = self.right.take();
         left_node_ref.left = left_right_node;
-        self.left.as_mut().map(|node| { node.parent = Some(self_ptr); });
-        let left_node_ptr = unsafe { NonNull::new_unchecked(*left_node_ref as *mut Node<'a, K, V>) };
-        left_node_ref.right.as_mut().map(|node| { node.parent = Some(left_node_ptr); });
+        self.left.as_mut().map(|node| {
+            node.parent = Some(self_ptr);
+        });
+        let left_node_ptr =
+            unsafe { NonNull::new_unchecked(*left_node_ref as *mut Node<'a, K, V>) };
+        left_node_ref.right.as_mut().map(|node| {
+            node.parent = Some(left_node_ptr);
+        });
         self.right = left_node;
         self.right.as_mut().map(|node| node.update_height());
         true
     }
 
-    fn rotate_left(&mut self) ->  bool {
-       if self.right.is_none() {
+    fn rotate_left(&mut self) -> bool {
+        if self.right.is_none() {
             return false;
         }
 
@@ -89,13 +97,18 @@ impl<'a, K, V> Node<'a, K, V> {
 
         mem::swap(self, right_node_ref);
         self.parent = None;
-        let self_ptr = unsafe {NonNull::new_unchecked(self as *mut Node<'a, K, V>)};
+        let self_ptr = unsafe { NonNull::new_unchecked(self as *mut Node<'a, K, V>) };
         right_node_ref.parent = Some(self_ptr);
         let right_left_node = self.left.take();
         right_node_ref.right = right_left_node;
-        self.right.as_mut().map(|node| { node.parent = Some(self_ptr); });
-        let right_node_ptr = unsafe { NonNull::new_unchecked(*right_node_ref as *mut Node<'a, K, V>) };
-        right_node_ref.left.as_mut().map(|node| { node.parent = Some(right_node_ptr); });
+        self.right.as_mut().map(|node| {
+            node.parent = Some(self_ptr);
+        });
+        let right_node_ptr =
+            unsafe { NonNull::new_unchecked(*right_node_ref as *mut Node<'a, K, V>) };
+        right_node_ref.left.as_mut().map(|node| {
+            node.parent = Some(right_node_ptr);
+        });
         self.left = right_node;
         self.left.as_mut().map(|node| node.update_height());
         true
@@ -125,7 +138,10 @@ enum BalanceResult {
 }
 
 // TODO: implement rotate
-impl<'a, K, V> AvlTree<'a, K, V> where K: Ord {
+impl<'a, K, V> AvlTree<'a, K, V>
+where
+    K: Ord,
+{
     pub fn new() -> AvlTree<'a, K, V> {
         AvlTree {
             head: None,
@@ -137,7 +153,7 @@ impl<'a, K, V> AvlTree<'a, K, V> where K: Ord {
         if self.head.is_none() {
             Iter {
                 current: None,
-                size: 0
+                size: 0,
             }
         } else {
             let min_child = self.head.as_ref().unwrap().get_min_child();
@@ -152,12 +168,12 @@ impl<'a, K, V> AvlTree<'a, K, V> where K: Ord {
         if self.head.is_none() {
             IterMut {
                 current: None,
-                size: 0
+                size: 0,
             }
         } else {
             let min_child = self.head.as_mut().unwrap().get_min_child_mut();
             IterMut {
-                current: Some(unsafe { NonNull::new_unchecked(min_child as *mut Node<K,V>) }),
+                current: Some(unsafe { NonNull::new_unchecked(min_child as *mut Node<K, V>) }),
                 size: self.size,
             }
         }
@@ -178,7 +194,7 @@ impl<'a, K, V> AvlTree<'a, K, V> where K: Ord {
             BalanceResult::BALANCED
         }
     }
-    
+
     fn balance(&mut self) {
         match self.check_balanced() {
             BalanceResult::LEFT_HEAVY => {
@@ -190,7 +206,7 @@ impl<'a, K, V> AvlTree<'a, K, V> where K: Ord {
                     left.rotate_left();
                 }
                 head.rotate_right();
-            },
+            }
             BalanceResult::RIGHT_HEAVY => {
                 let head = self.head.as_mut().unwrap();
                 let right = head.right.as_mut().unwrap();
@@ -200,14 +216,17 @@ impl<'a, K, V> AvlTree<'a, K, V> where K: Ord {
                     right.rotate_right();
                 }
                 head.rotate_left();
-            },
+            }
             _ => {}
         }
     }
 }
 
-impl<'a, K, V> BinaryTree<'a, K, V, Node<'a, K, V>> for AvlTree<'a, K, V> where K: Ord {
-    fn get(&self, key: &K) ->  Option<&V> {
+impl<'a, K, V> BinaryTree<'a, K, V, Node<'a, K, V>> for AvlTree<'a, K, V>
+where
+    K: Ord,
+{
+    fn get(&self, key: &K) -> Option<&V> {
         if self.head.is_none() {
             None
         } else {
@@ -230,8 +249,8 @@ impl<'a, K, V> BinaryTree<'a, K, V, Node<'a, K, V>> for AvlTree<'a, K, V> where 
             Some(&(current.item.1))
         }
     }
-    
-    fn borrow(&self, key: &K) ->  Option<&'a V> {
+
+    fn borrow(&self, key: &K) -> Option<&'a V> {
         let mut result = None;
         self.head.as_ref().map(|head| unsafe {
             let mut current = (*head as *const Node<'a, K, V>).clone();
@@ -255,7 +274,7 @@ impl<'a, K, V> BinaryTree<'a, K, V, Node<'a, K, V>> for AvlTree<'a, K, V> where 
         result
     }
 
-    fn get_mut(&mut self, key: &K) ->  Option<&mut V> {
+    fn get_mut(&mut self, key: &K) -> Option<&mut V> {
         if self.head.is_none() {
             None
         } else {
@@ -279,7 +298,7 @@ impl<'a, K, V> BinaryTree<'a, K, V, Node<'a, K, V>> for AvlTree<'a, K, V> where 
         }
     }
 
-    fn borrow_mut(&mut self, key: &K) ->  Option<&'a mut V> {
+    fn borrow_mut(&mut self, key: &K) -> Option<&'a mut V> {
         let mut result = None;
         self.head.as_mut().map(|head| unsafe {
             let mut current = *head as *mut Node<'a, K, V>;
@@ -311,7 +330,7 @@ impl<'a, K, V> BinaryTree<'a, K, V, Node<'a, K, V>> for AvlTree<'a, K, V> where 
             loop {
                 if current.item.0 < node.item.0 {
                     if current.right.is_none() {
-                        let np = unsafe {NonNull::new_unchecked(*current as *mut Node<'a, K, V>)};
+                        let np = unsafe { NonNull::new_unchecked(*current as *mut Node<'a, K, V>) };
                         node.parent.replace(np);
                         current.right.replace(node);
                         current.update_height();
@@ -321,7 +340,7 @@ impl<'a, K, V> BinaryTree<'a, K, V, Node<'a, K, V>> for AvlTree<'a, K, V> where 
                     }
                 } else {
                     if current.left.is_none() {
-                        let np = unsafe {NonNull::new_unchecked(*current as *mut Node<'a, K, V>)};
+                        let np = unsafe { NonNull::new_unchecked(*current as *mut Node<'a, K, V>) };
                         node.parent.replace(np);
                         current.left.replace(node);
                         current.update_height();
@@ -335,7 +354,6 @@ impl<'a, K, V> BinaryTree<'a, K, V, Node<'a, K, V>> for AvlTree<'a, K, V> where 
         self.balance();
         self.size += 1;
     }
-
 }
 
 impl<'a, K, V> Deref for Node<'a, K, V> {
@@ -354,30 +372,34 @@ impl<'a, K, V> DerefMut for Node<'a, K, V> {
 
 impl<'a, K, V> Iterator for Iter<'a, K, V> {
     type Item = &'a (K, V);
-     
+
     fn next(&mut self) -> Option<&'a (K, V)> {
         if self.size == 0 {
             None
         } else {
             let result = unsafe { &(*self.current.unwrap()).item };
-            self.current = self.current.map(|item| unsafe {
-                let node = &(*item);
-                self.size -= 1;
-                match &node.right {
-                    None => {
-                        let mut parent = node.get_parent_ref();
-                        let mut child = node;
-                        while parent.is_some() && parent.unwrap().right.is_some() && parent.unwrap().right.as_ref().unwrap().is_same(child) {
-                            child = &(*parent.unwrap());
-                            parent = parent.unwrap().get_parent_ref();
+            self.current = self
+                .current
+                .map(|item| unsafe {
+                    let node = &(*item);
+                    self.size -= 1;
+                    match &node.right {
+                        None => {
+                            let mut parent = node.get_parent_ref();
+                            let mut child = node;
+                            while parent.is_some()
+                                && parent.unwrap().right.is_some()
+                                && parent.unwrap().right.as_ref().unwrap().is_same(child)
+                            {
+                                child = &(*parent.unwrap());
+                                parent = parent.unwrap().get_parent_ref();
+                            }
+                            parent.map(|par| par as *const Node<K, V>)
                         }
-                        parent.map(|par| par as *const Node<K,V>)
-                    },
-                    Some(right) => {
-                        Some(right.get_min_child() as *const Node<K,V>)
-                    },
-                }
-            }).unwrap();
+                        Some(right) => Some(right.get_min_child() as *const Node<K, V>),
+                    }
+                })
+                .unwrap();
             Some(result)
         }
     }
@@ -389,30 +411,42 @@ impl<'a, K, V> Iterator for Iter<'a, K, V> {
 
 impl<'a, K, V> Iterator for IterMut<'a, K, V> {
     type Item = &'a mut (K, V);
-     
+
     fn next(&mut self) -> Option<&'a mut (K, V)> {
         if self.size == 0 {
             None
         } else {
             let result = self.current.unwrap();
-            self.current = self.current.map(|mut item| unsafe {
-                let node = item.as_mut();
-                self.size -= 1;
-                match &mut node.right {
-                    None => {
-                        let mut parent = node.parent;
-                        let mut child = NonNull::new_unchecked(node as *mut Node<K,V>);
-                        while parent.is_some() && parent.unwrap().as_ref().right.is_some() && parent.unwrap().as_ref().right.as_ref().unwrap().is_same(child.as_ref()) {
-                            child = parent.unwrap();
-                            parent = parent.unwrap().as_ref().parent;
+            self.current = self
+                .current
+                .map(|mut item| unsafe {
+                    let node = item.as_mut();
+                    self.size -= 1;
+                    match &mut node.right {
+                        None => {
+                            let mut parent = node.parent;
+                            let mut child = NonNull::new_unchecked(node as *mut Node<K, V>);
+                            while parent.is_some()
+                                && parent.unwrap().as_ref().right.is_some()
+                                && parent
+                                    .unwrap()
+                                    .as_ref()
+                                    .right
+                                    .as_ref()
+                                    .unwrap()
+                                    .is_same(child.as_ref())
+                            {
+                                child = parent.unwrap();
+                                parent = parent.unwrap().as_ref().parent;
+                            }
+                            parent
                         }
-                        parent
-                    },
-                    Some(right) => {
-                        Some(NonNull::new_unchecked(right.get_min_child_mut() as *mut Node<K,V>))
-                    },
-                }
-            }).unwrap();
+                        Some(right) => Some(NonNull::new_unchecked(
+                            right.get_min_child_mut() as *mut Node<K, V>
+                        )),
+                    }
+                })
+                .unwrap();
             Some(unsafe { &mut ((*result.as_ptr()).item) })
         }
     }
@@ -425,8 +459,8 @@ impl<'a, K, V> Iterator for IterMut<'a, K, V> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::{Rng, StdRng, SeedableRng};
     use array_init::array_init;
+    use rand::{Rng, SeedableRng, StdRng};
 
     #[test]
     fn test_simple() {
@@ -483,14 +517,19 @@ mod tests {
     fn test_random() {
         let seed: &[_] = &[1, 2, 3, 4];
         let mut rng: StdRng = SeedableRng::from_seed(seed);
-        let mut nodes: [Node<usize, usize>; 100]  = array_init(|i| Node::new(i, i));
+        let mut nodes: [Node<usize, usize>; 100] = array_init(|i| Node::new(i, i));
         rng.shuffle(&mut nodes);
         let mut btree = AvlTree::new();
-        
+
         for node in nodes.iter_mut() {
             let i = node.item.0;
             btree.insert(node);
-            assert_eq!(btree.check_balanced(), BalanceResult::BALANCED, "not balanced when inserting {}", i);
+            assert_eq!(
+                btree.check_balanced(),
+                BalanceResult::BALANCED,
+                "not balanced when inserting {}",
+                i
+            );
         }
         for i in 0..100 {
             assert_eq!(i, *(btree.get(&i).unwrap()));

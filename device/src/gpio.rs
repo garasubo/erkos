@@ -1,6 +1,6 @@
 extern crate embedded_hal as hal;
-use volatile_register::{RO, RW};
 use core::ops::Deref;
+use volatile_register::{RO, RW};
 
 #[repr(C)]
 pub struct GpioRegisters {
@@ -22,7 +22,9 @@ pub struct Gpio {
 
 impl Gpio {
     pub fn new(base: usize) -> Gpio {
-        Gpio { registers: base as *mut GpioRegisters }
+        Gpio {
+            registers: base as *mut GpioRegisters,
+        }
     }
 
     pub fn get_registers_ref(&self) -> &GpioRegisters {

@@ -1,9 +1,9 @@
-use core::option::Option;
 use core::ops::DerefMut;
+use core::option::Option;
 
-use crate::process_manager::ProcessId;
+use super::{ExecResult, Scheduler};
 use crate::process_list::ProcessListItem;
-use super::{Scheduler, ExecResult};
+use crate::process_manager::ProcessId;
 use util::linked_list::{LinkedList, ListItem};
 
 pub struct SimpleScheduler<'a> {
@@ -15,7 +15,7 @@ impl<'a> Scheduler<'a> for SimpleScheduler<'a> {
     fn get_current_proc(&mut self) -> Option<&mut ProcessId> {
         self.active.head_mut().map(|item| (*item).deref_mut())
     }
-    
+
     fn pop_current_proc(&mut self) -> Option<&'a mut ProcessListItem<'a>> {
         self.active.pop()
     }
@@ -51,5 +51,4 @@ impl<'a> SimpleScheduler<'a> {
             waiting: LinkedList::new(),
         }
     }
-
 }

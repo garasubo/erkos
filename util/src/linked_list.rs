@@ -57,12 +57,14 @@ impl<'a, T> LinkedList<'a, T> {
                 match result.iter_mut().next() {
                     Some(item) => {
                         (*item).prev = None;
-                    },
-                    None => {},
+                    }
+                    None => {}
                 }
                 result
-            },
-            None => { panic!("empty list");},
+            }
+            None => {
+                panic!("empty list");
+            }
         };
         let result = self.head.take();
         if next.is_none() {
@@ -85,7 +87,9 @@ impl<'a, T> LinkedList<'a, T> {
             let item_ptr = unsafe { NonNull::new_unchecked(item as *mut ListItem<T>) };
             self.last.replace(item_ptr);
             item.prev.replace(last_ptr);
-            unsafe { last_ptr.as_mut().next.replace(item); }
+            unsafe {
+                last_ptr.as_mut().next.replace(item);
+            }
         }
         self.len += 1;
     }
@@ -120,10 +124,13 @@ impl<'a, T> LinkedList<'a, T> {
             len: self.len,
         }
     }
-    
+
     pub fn iter_mut(&mut self) -> IterMut<'a, T> {
         IterMut {
-            head: self.head.as_mut().map(|item| unsafe { NonNull::new_unchecked(*item as *mut ListItem<T>) }),
+            head: self
+                .head
+                .as_mut()
+                .map(|item| unsafe { NonNull::new_unchecked(*item as *mut ListItem<T>) }),
             len: self.len,
         }
     }
@@ -131,7 +138,7 @@ impl<'a, T> LinkedList<'a, T> {
 
 impl<'a, T> Iterator for Iter<'a, T> {
     type Item = &'a T;
-     
+
     fn next(&mut self) -> Option<&'a T> {
         if self.len == 0 {
             None
@@ -139,12 +146,9 @@ impl<'a, T> Iterator for Iter<'a, T> {
             self.head.map(|item| unsafe {
                 let node = &(*item);
                 self.len -= 1;
-                self.head = node.next.as_ref().map(|item| {
-                    *item as *const ListItem<T>
-                });
+                self.head = node.next.as_ref().map(|item| *item as *const ListItem<T>);
                 &node.item
             })
-
         }
     }
 
@@ -155,7 +159,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
 
 impl<'a, T> Iterator for IterMut<'a, T> {
     type Item = &'a mut T;
-     
+
     fn next(&mut self) -> Option<&'a mut T> {
         if self.len == 0 {
             None
@@ -163,12 +167,12 @@ impl<'a, T> Iterator for IterMut<'a, T> {
             self.head.map(|ptr| unsafe {
                 let node = &mut *ptr.as_ptr();
                 self.len -= 1;
-                self.head = node.next.as_mut().map(|item| {
-                    NonNull::new_unchecked(*item as *mut ListItem<T>)
-                });
+                self.head = node
+                    .next
+                    .as_mut()
+                    .map(|item| NonNull::new_unchecked(*item as *mut ListItem<T>));
                 &mut node.item
             })
-
         }
     }
 
@@ -213,7 +217,7 @@ mod tests {
         list.push(&mut item1);
         list.push(&mut item2);
         list.push(&mut item3);
-        let expected = [9,1,3];
+        let expected = [9, 1, 3];
         for (i, item) in list.iter().enumerate() {
             assert_eq!(expected[i], *item);
         }
@@ -228,8 +232,8 @@ mod tests {
         list.push(&mut item1);
         list.push(&mut item2);
         list.push(&mut item3);
-        let expected = [7,5,3];
-        let next = [3,1,5];
+        let expected = [7, 5, 3];
+        let next = [3, 1, 5];
         for (i, item) in list.iter_mut().enumerate() {
             assert_eq!(expected[i], *item);
             *item += next[i];
@@ -238,7 +242,7 @@ mod tests {
             assert_eq!(expected[i] + next[i], *item);
         }
     }
-    
+
     #[test]
     fn test_join() {
         let mut list1 = LinkedList::new();

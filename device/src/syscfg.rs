@@ -1,5 +1,5 @@
-use volatile_register::RW;
 use core::ops::Deref;
+use volatile_register::RW;
 
 #[repr(C)]
 pub struct SyscfgRegisters {
@@ -25,7 +25,6 @@ impl Deref for Syscfg {
         unsafe { &*registers }
     }
 }
-
 
 impl Syscfg {
     pub const fn new(base: u32) -> Syscfg {

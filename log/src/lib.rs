@@ -32,7 +32,7 @@ macro_rules! debug {
 #[cfg(not(debug_assertions))]
 #[macro_export]
 macro_rules! debug {
-    ($logger:expr, $string:expr) => {{  }};
+    ($logger:expr, $string:expr) => {{}};
 }
 
 #[cfg(debug_assertions)]

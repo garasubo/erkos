@@ -5,8 +5,8 @@
 pub mod dma;
 pub mod eth;
 pub mod exti;
-pub mod irq;
 pub mod gpio;
-pub mod serial;
+pub mod irq;
 pub mod rcc;
+pub mod serial;
 pub mod syscfg;

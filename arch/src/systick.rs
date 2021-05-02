@@ -1,5 +1,5 @@
-use volatile_register::{RW, RO};
 use core::ops::Deref;
+use volatile_register::{RO, RW};
 
 #[repr(C)]
 pub struct SystickRegisters {
@@ -30,14 +30,20 @@ impl Systick {
     }
 
     pub fn clear_current(&self) {
-        unsafe { self.cvr.write(0); }
+        unsafe {
+            self.cvr.write(0);
+        }
     }
 
     pub fn set_reload(&self, val: u32) {
-        unsafe { self.rvr.write(val); }
+        unsafe {
+            self.rvr.write(val);
+        }
     }
 
     pub fn enable(&self) {
-        unsafe { self.csr.modify(|val| (val | 0x3)); }
+        unsafe {
+            self.csr.modify(|val| (val | 0x3));
+        }
     }
 }

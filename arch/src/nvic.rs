@@ -1,4 +1,4 @@
-use volatile_register::{RW, RO};
+use volatile_register::{RO, RW};
 
 #[repr(C)]
 pub struct NvicRegisters {
@@ -12,7 +12,7 @@ pub struct NvicRegisters {
     _reserved4: [u32; 16],
     pub iabr: [RO<u32>; 16],
     _reserved5: [u32; 48],
-    pub ipr: [RW<u8>; 4*124],
+    pub ipr: [RW<u8>; 4 * 124],
 }
 
 pub struct Nvic;
@@ -31,25 +31,31 @@ impl Nvic {
         let registers = self.get_registers_ref();
 
         let idx = (id / 32) as usize;
-        unsafe { registers.iser[idx].write(1 << (id % 32)); }
+        unsafe {
+            registers.iser[idx].write(1 << (id % 32));
+        }
     }
-    
+
     pub fn disable(&self, id: u32) {
         let registers = self.get_registers_ref();
 
         let idx = (id / 32) as usize;
-        unsafe { registers.icer[idx].write(1 << (id % 32)); }
+        unsafe {
+            registers.icer[idx].write(1 << (id % 32));
+        }
     }
 
     pub fn is_pending(&self, id: u32) -> bool {
         let registers = self.get_registers_ref();
         let idx = (id / 32) as usize;
-        (registers.ispr[idx].read() & (1 << (id %32))) > 0
+        (registers.ispr[idx].read() & (1 << (id % 32))) > 0
     }
 
     pub fn clear_pending(&self, id: u32) {
         let registers = self.get_registers_ref();
         let idx = (id / 32) as usize;
-        unsafe { registers.icpr[idx].write(1 << (id % 32)); }
+        unsafe {
+            registers.icpr[idx].write(1 << (id % 32));
+        }
     }
 }

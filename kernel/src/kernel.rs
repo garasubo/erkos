@@ -1,15 +1,15 @@
-use crate::scheduler::Scheduler;
 use crate::interrupt_manager::InterruptManager;
 use crate::message_manager::MessageManager;
 use crate::process::Process;
 use crate::process_manager::{ProcessId, ProcessManager};
+use crate::scheduler::Scheduler;
 use crate::syscall_id;
 use arch::StackFrame;
-use core::slice::from_raw_parts;
 use core::cell::RefCell;
+use core::fmt::Write as CoreWrite;
+use core::slice::from_raw_parts;
 use embedded_hal::serial::Write;
 use log::dhprintln;
-use core::fmt::{Write as CoreWrite};
 use rt::SYSCALL_FIRED;
 
 pub struct Kernel<'a, S, W> {
@@ -22,7 +22,11 @@ pub struct Kernel<'a, S, W> {
     //message_manager: MessageManager<'a>,
 }
 
-impl<'a, S, W> Kernel<'a, S, W> where S: Scheduler<'a>, W: Write<char> {
+impl<'a, S, W> Kernel<'a, S, W>
+where
+    S: Scheduler<'a>,
+    W: Write<char>,
+{
     pub fn create(
         scheduler: S,
         serial: W,
@@ -42,7 +46,9 @@ impl<'a, S, W> Kernel<'a, S, W> where S: Scheduler<'a>, W: Write<char> {
     }
 
     pub fn run(&'a mut self) -> ! {
-        unsafe { asm!("cpsid i" ::: "memory" : "volatile"); }
+        unsafe {
+            asm!("cpsid i" ::: "memory" : "volatile");
+        }
         let interrupt_manager = &mut self.interrupt_manager;
         let process_manager = &mut self.process_manager;
         loop {
@@ -72,26 +78,28 @@ impl<'a, S, W> Kernel<'a, S, W> where S: Scheduler<'a>, W: Write<char> {
                             match svc_id {
                                 syscall_id::PRINT => {
                                     let arg2 = base_frame.r2 as usize;
-                                    let arg1 = unsafe { from_raw_parts(base_frame.r1 as *const u8, arg2) };
+                                    let arg1 =
+                                        unsafe { from_raw_parts(base_frame.r1 as *const u8, arg2) };
 
                                     for i in 0..arg2 {
                                         serial.write(arg1[i] as char);
                                     }
-                                },
+                                }
                                 syscall_id::YIELD => {
                                     unsafe { SHOULD_DISPATCH = 1 };
-                                },
+                                }
                                 syscall_id::WAIT_IRQ => {
                                     let arg1 = base_frame.r1;
-                                    interrupt_manager.push_wait(arg1, sched.pop_current_proc().unwrap());
-                                },
+                                    interrupt_manager
+                                        .push_wait(arg1, sched.pop_current_proc().unwrap());
+                                }
                                 syscall_id::WAIT_SYSTICK => {
                                     let current = sched.pop_current_proc().unwrap();
                                     sched.push_wait(current);
-                                },
+                                }
                                 syscall_id::DORMANT => {
                                     sched.pop_current_proc().unwrap();
-                                },
+                                }
                                 syscall_id::SEND_MESSAGE => {
                                     let arg1 = base_frame.r1;
                                     let arg2 = base_frame.r2;
@@ -99,28 +107,30 @@ impl<'a, S, W> Kernel<'a, S, W> where S: Scheduler<'a>, W: Write<char> {
                                     if target.is_none() {
                                         base_frame.r0 = 0;
                                     } else {
-                                        let result = message_manager.send_message(target.unwrap(), arg2);
+                                        let result =
+                                            message_manager.send_message(target.unwrap(), arg2);
                                         base_frame.r0 = result.clone() as u32;
                                     }
-                                },
+                                }
                                 syscall_id::RECEIVE_MESSAGE => {
-                                    let result = message_manager.receive_message(process_manager.borrow_mut(item).unwrap());
+                                    let result = message_manager
+                                        .receive_message(process_manager.borrow_mut(item).unwrap());
                                     if result.is_none() {
                                         base_frame.r0 = 0;
                                     } else {
                                         base_frame.r0 = 1;
                                         base_frame.r1 = result.unwrap().clone();
                                     }
-                                },
+                                }
                                 _ => {
                                     // TODO: error handling
                                     panic!("unknown svc");
                                 }
                             }
-                        },
+                        }
                         None => {}
                     }
-                },
+                }
                 None => {
                     dhprintln!("sleeping");
                     unsafe {
@@ -133,11 +143,10 @@ impl<'a, S, W> Kernel<'a, S, W> where S: Scheduler<'a>, W: Write<char> {
                 }
             }
 
-            
             let mut released_list = interrupt_manager.check_pending();
             sched.resume_list(&mut released_list);
 
-            unsafe { 
+            unsafe {
                 if SHOULD_DISPATCH > 0 {
                     sched.resume_waiting();
                     sched.schedule_next();

@@ -1,8 +1,8 @@
 extern crate embedded_hal as hal;
+use crate::dma::{Client, DmaClient, Stream3};
 use core::fmt::Debug;
 use vcell::VolatileCell;
 use volatile_register::RW;
-use crate::dma::{Stream3, DmaClient, Client};
 
 pub struct Serial<U, Rx, Tx> {
     usart: U,
@@ -37,7 +37,9 @@ pub struct UsartRegisters {
 
 impl Usart {
     pub fn new(base: usize) -> Usart {
-        Usart { registers: base as *mut UsartRegisters }
+        Usart {
+            registers: base as *mut UsartRegisters,
+        }
     }
 
     pub fn get_registers_ref(&self) -> &UsartRegisters {
@@ -51,8 +53,7 @@ impl<R, T> hal::serial::Read<char> for Serial<Usart, R, T> {
     fn read(&mut self) -> nb::Result<char, Error> {
         let registers = self.usart.get_registers_ref();
 
-        while (registers.sr.read() & (1 << 5)) == 0 { 
-        }
+        while (registers.sr.read() & (1 << 5)) == 0 {}
         let c = registers.dr.read() as u8 as char;
         if c == '\r' {
             Ok('\n')
@@ -65,15 +66,15 @@ impl<R, T> hal::serial::Read<char> for Serial<Usart, R, T> {
 impl<R, T> hal::serial::Write<char> for Serial<Usart, R, T> {
     type Error = Error;
 
-    fn write(&mut self, c: char) -> nb::Result<(), Error>{
+    fn write(&mut self, c: char) -> nb::Result<(), Error> {
         let registers = self.usart.get_registers_ref();
         if c == '\n' {
-            while (registers.sr.read() & (1 << 7)) == 0 { }
+            while (registers.sr.read() & (1 << 7)) == 0 {}
             unsafe {
                 registers.dr.write('\r' as u32);
             }
         }
-        while (registers.sr.read() & (1 << 7)) == 0 { }
+        while (registers.sr.read() & (1 << 7)) == 0 {}
         unsafe {
             registers.dr.write(c as u32);
         }
@@ -82,7 +83,7 @@ impl<R, T> hal::serial::Write<char> for Serial<Usart, R, T> {
 
     fn flush(&mut self) -> nb::Result<(), Error> {
         let registers = self.usart.get_registers_ref();
-        while (registers.sr.read() & (1 << 7)) == 0 { }
+        while (registers.sr.read() & (1 << 7)) == 0 {}
         Ok(())
     }
 }
@@ -94,10 +95,16 @@ impl Serial<Usart, (), ()> {
         let registers = usart.get_registers_ref();
         unsafe {
             registers.brr.write(0x683);
-            registers.cr1.write((1 << 5) | (1  << 3) | (1 << 2) | (1 << 13));
+            registers
+                .cr1
+                .write((1 << 5) | (1 << 3) | (1 << 2) | (1 << 13));
         }
 
-        Serial { usart, rx_dma: (), tx_dma: () }
+        Serial {
+            usart,
+            rx_dma: (),
+            tx_dma: (),
+        }
     }
 }
 
@@ -108,16 +115,22 @@ impl Serial<Usart, (), DmaClient<Stream3>> {
         let registers = usart.get_registers_ref();
         unsafe {
             registers.brr.write(0x683);
-            registers.cr1.write((1 << 5) | (1  << 3) | (1 << 2) | (1 << 13));
-            // enable transmitter DMA 
+            registers
+                .cr1
+                .write((1 << 5) | (1 << 3) | (1 << 2) | (1 << 13));
+            // enable transmitter DMA
             registers.cr3.modify(|v| v | (1 << 7));
         }
 
         let tx_dma = DmaClient::dma1_stream3();
 
-        Serial { usart, rx_dma: (), tx_dma }
+        Serial {
+            usart,
+            rx_dma: (),
+            tx_dma,
+        }
     }
-    
+
     pub fn send_buffer(&self, buffer: &'static [u8]) {
         let registers = self.usart.get_registers_ref();
         unsafe {

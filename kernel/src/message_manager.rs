@@ -1,10 +1,10 @@
-use crate::process_manager::{ProcessManager, ProcessId};
 use crate::process::Process;
-use util::linked_list::{LinkedList, ListItem};
+use crate::process_manager::{ProcessId, ProcessManager};
 use core::cell::RefCell;
+use util::linked_list::{LinkedList, ListItem};
 
 pub struct MessageManager<'a> {
-    buff: LinkedList<'a, u32>,    
+    buff: LinkedList<'a, u32>,
 }
 
 impl<'a> MessageManager<'a> {
@@ -14,16 +14,14 @@ impl<'a> MessageManager<'a> {
             list.push(item);
         }
 
-        MessageManager {
-            buff: list,
-        }
+        MessageManager { buff: list }
     }
 
     pub fn send_message(&mut self, process: &'a mut Process<'a>, message: u32) -> bool {
         if self.buff.is_empty() {
             return false;
         }
-        
+
         let mut item = self.buff.pop().unwrap();
         item.item = message;
         process.message_queue.push(item);
