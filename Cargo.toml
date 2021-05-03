@@ -10,5 +10,6 @@ members = [
     "rt",
     "user",
     "util",
+    "wio_app",
 ]
 exclude = [".cargo"]
