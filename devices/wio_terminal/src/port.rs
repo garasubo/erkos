@@ -19,7 +19,7 @@ pub struct PortRegisters {
     pub wrconfigf: RW<u32>,
     pub evctrl: RW<u32>,
 
-    pub pmux: [RW<u32>; 16],
+    pub pmux: [RW<u8>; 16],
 
     pub pincfg: [PinCfg; 16],
 }
