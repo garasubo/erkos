@@ -17,7 +17,7 @@ pub struct Process<'a> {
 }
 
 unsafe fn execute_process(mut sp: *mut u8, regs: &mut [u32; 8]) -> *mut u8 {
-    asm!(
+    llvm_asm!(
         "
         msr psp, $1
         ldmia $2, {r4-r11}

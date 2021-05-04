@@ -1,7 +1,7 @@
 pub fn get_sp() -> u32 {
     let result;
     unsafe {
-        asm!(
+        llvm_asm!(
             "
             mov sp, r0
             "

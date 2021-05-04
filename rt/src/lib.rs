@@ -2,7 +2,7 @@
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 #![no_std]
-#![feature(asm)]
+#![feature(llvm_asm)]
 
 use core::panic::PanicInfo;
 use core::ptr;
@@ -132,7 +132,7 @@ pub static mut SYSCALL_FIRED: usize = 0;
 
 #[no_mangle]
 pub unsafe extern "C" fn SVCall() {
-    asm!(
+    llvm_asm!(
         "
         cmp lr, #0xfffffff9
         bne to_kernel

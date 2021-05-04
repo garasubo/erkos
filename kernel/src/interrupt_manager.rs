@@ -77,7 +77,7 @@ impl<'a> InterruptManager<'a> {
 }
 
 pub unsafe extern "C" fn DefaultIrqHandler() {
-    asm!(
+    llvm_asm!(
         "
         movw lr, #0xfff9
         movt lr, #0xffff

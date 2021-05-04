@@ -47,7 +47,7 @@ where
 
     pub fn run(&'a mut self) -> ! {
         unsafe {
-            asm!("cpsid i" ::: "memory" : "volatile");
+            llvm_asm!("cpsid i" ::: "memory" : "volatile");
         }
         let interrupt_manager = &mut self.interrupt_manager;
         let process_manager = &mut self.process_manager;
@@ -57,6 +57,7 @@ where
             let mut message_manager = self.message_manager.borrow_mut();
             //let mut process_manager = self.process_manager.borrow_mut();
             let current_id: Option<&mut ProcessId> = sched.get_current_proc();
+            let mut should_schedule_next = false;
 
             match current_id {
                 Some(item) => {
@@ -86,7 +87,7 @@ where
                                     }
                                 }
                                 syscall_id::YIELD => {
-                                    unsafe { SHOULD_DISPATCH = 1 };
+                                    should_schedule_next = true;
                                 }
                                 syscall_id::WAIT_IRQ => {
                                     let arg1 = base_frame.r1;
@@ -134,7 +135,7 @@ where
                 None => {
                     dhprintln!("sleeping");
                     unsafe {
-                        asm!("
+                        llvm_asm!("
                             cpsie i
                             wfi
                             cpsid i
@@ -146,12 +147,12 @@ where
             let mut released_list = interrupt_manager.check_pending();
             sched.resume_list(&mut released_list);
 
-            unsafe {
-                if SHOULD_DISPATCH > 0 {
-                    sched.resume_waiting();
-                    sched.schedule_next();
-                    SHOULD_DISPATCH = 0;
-                }
+            if unsafe { SHOULD_DISPATCH } > 0 {
+                sched.resume_waiting();
+                sched.schedule_next();
+                unsafe { SHOULD_DISPATCH = 0 };
+            } else if should_schedule_next {
+                sched.schedule_next();
             }
         }
     }
@@ -162,7 +163,7 @@ pub static mut SHOULD_DISPATCH: u32 = 0;
 
 #[no_mangle]
 pub unsafe extern "C" fn SysTick() {
-    asm!(
+    llvm_asm!(
         "
         movw lr, #0xfff9
         movt lr, #0xffff
