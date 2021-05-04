@@ -2,7 +2,7 @@ use kernel::syscall_id::*;
 
 pub fn dormant() {
     unsafe {
-        asm!(
+        llvm_asm!(
         "
         svc 1
         "
@@ -14,7 +14,7 @@ pub fn dormant() {
 pub fn send_message(id: u32, message: u32) -> bool {
     let result: bool;
     unsafe {
-        asm!(
+        llvm_asm!(
         "
         svc 1
         "
@@ -31,7 +31,7 @@ pub fn receive_message() -> Option<u32> {
     let result: bool;
     let message: u32;
     unsafe {
-        asm!(
+        llvm_asm!(
         "
         svc 1
         "
@@ -51,7 +51,7 @@ pub fn receive_message() -> Option<u32> {
 
 pub fn wait_for_interrupt(id: u32) {
     unsafe {
-        asm!(
+        llvm_asm!(
             "
             svc 1
             "
@@ -63,7 +63,7 @@ pub fn wait_for_interrupt(id: u32) {
 
 pub fn wait_for_event() {
     unsafe {
-        asm!(
+        llvm_asm!(
             "
             svc 1
             "
@@ -75,7 +75,7 @@ pub fn wait_for_event() {
 
 pub fn wait_for_systick() {
     unsafe {
-        asm!(
+        llvm_asm!(
             "
             svc 1
             "
@@ -89,7 +89,7 @@ pub fn print_str(message: &str) {
     let message_ptr = message.as_ptr();
     let length = message.bytes().len();
     unsafe {
-        asm!(
+        llvm_asm!(
             "
             svc 1
             "
