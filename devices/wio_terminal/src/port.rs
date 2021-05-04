@@ -21,7 +21,7 @@ pub struct PortRegisters {
 
     pub pmux: [RW<u8>; 16],
 
-    pub pincfg: [PinCfg; 16],
+    pub pincfg: [PinCfg; 32],
 }
 
 #[repr(transparent)]

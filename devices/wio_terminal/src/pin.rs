@@ -1,16 +1,14 @@
-use crate::port::{Port, PinCfg};
+use crate::port::{Port, PortC, PinCfg};
 use core::marker::PhantomData;
 
 pub struct Pin<'a, P, const N: u8> {
     port: &'a Port<P>,
-    _marker: PhantomData<N>,
 }
 
-impl<'a, N> Pin<'a, PortC, N> {
+impl<'a, const N: u8> Pin<'a, PortC, N> {
     pub fn new(port: &'a Port<PortC>) -> Self {
         Self {
             port,
-            _marker: PhantomData,
         }
     }
 
@@ -33,6 +31,6 @@ impl<'a, N> Pin<'a, PortC, N> {
     }
 
     pub fn pincfg(&self) -> &PinCfg {
-        &self.port.pincfg[N]
+        &self.port.pincfg[N as usize]
     }
 }
