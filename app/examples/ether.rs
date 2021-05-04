@@ -4,13 +4,13 @@
 
 use arch::nvic::Nvic;
 use arch::systick::Systick;
-use device::eth::{Ethernet, EthernetTransmitter, RxEntry, TxEntry};
-use device::exti::Exti;
-use device::gpio::Gpio;
-use device::irq::IrqId;
-use device::rcc::RCC;
-use device::serial::Serial;
-use device::syscfg::Syscfg;
+use stm32f429zi::eth::{Ethernet, EthernetTransmitter, RxEntry, TxEntry};
+use stm32f429zi::exti::Exti;
+use stm32f429zi::gpio::Gpio;
+use stm32f429zi::irq::IrqId;
+use stm32f429zi::rcc::RCC;
+use stm32f429zi::serial::Serial;
+use stm32f429zi::syscfg::Syscfg;
 use embedded_hal::serial::{Read, Write};
 use log::dhprintln;
 use rt::entry;
