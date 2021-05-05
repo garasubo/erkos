@@ -178,7 +178,7 @@ impl Deref for EthernetDma {
     }
 }
 
-pub mod phy {
+mod phy {
     pub const REG_BCR: u8 = 0;
     pub const REG_BSR: u8 = 1;
     pub const REG_ID1R: u8 = 2;
@@ -206,6 +206,16 @@ pub mod phy {
     pub const REG_ISFR: u8 = 29;
     pub const REG_IMR: u8 = 30;
     pub const REG_SCSR: u8 = 31;
+}
+
+pub struct BasicStatus {
+    value: u16,
+}
+
+impl BasicStatus {
+    pub fn is_link_detected(&self) -> bool {
+        self.value & (1 << 2) > 0
+    }
 }
 
 impl Ethernet {
@@ -309,6 +319,13 @@ impl Ethernet {
             });
 
             while self.read_phy_reg(phy::REG_SCSR) & (1 << 12) == 0 {}
+        }
+    }
+
+    pub fn basic_status(&self) -> BasicStatus {
+        let value = self.read_phy_reg(phy::REG_BSR) as u16;
+        BasicStatus {
+            value,
         }
     }
 }
