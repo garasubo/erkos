@@ -3,6 +3,8 @@ use crate::dma::{Client, DmaClient, Stream3};
 use core::fmt::Debug;
 use vcell::VolatileCell;
 use volatile_register::RW;
+use core::fmt::Write;
+use hal::serial::Write as SerialWrite;
 
 pub struct Serial<U, Rx, Tx> {
     usart: U,
@@ -63,7 +65,7 @@ impl<R, T> hal::serial::Read<char> for Serial<Usart, R, T> {
     }
 }
 
-impl<R, T> hal::serial::Write<char> for Serial<Usart, R, T> {
+impl<R, T> SerialWrite<char> for Serial<Usart, R, T> {
     type Error = Error;
 
     fn write(&mut self, c: char) -> nb::Result<(), Error> {
@@ -105,6 +107,16 @@ impl Serial<Usart, (), ()> {
             rx_dma: (),
             tx_dma: (),
         }
+    }
+}
+
+impl Write for Serial<Usart, (), ()> {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        let _ = s
+            .bytes()
+            .map(|c| nb::block!(self.write(char::from(c))))
+            .last();
+        Ok(())
     }
 }
 
