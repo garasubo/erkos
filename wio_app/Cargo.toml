@@ -1,0 +1,18 @@
+[package]
+name = "wio_app"
+version = "0.1.0"
+authors = ["garasubo <garasubo@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+arch = { path = "../arch" }
+wio_terminal = { path = "../devices/wio_terminal" }
+rt = { path = "../rt" }
+log = { path = "../log" }
+kernel = { path = "../kernel" }
+user = { path = "../user" }
+util = { path = "../util" }
+cortex-m-semihosting = "0.3.5"
+embedded-hal = "0.2.2"

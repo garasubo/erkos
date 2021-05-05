@@ -1,0 +1,9 @@
+[target.thumbv7em-none-eabihf]
+rustflags = [
+    "-C", "link-arg=-Tdevice.ld",
+    "-C", "link-arg=-Tlink.ld",
+    "-C", "link-arg=-Tlog.ld",
+]
+
+[build]
+target = "thumbv7em-none-eabihf"
