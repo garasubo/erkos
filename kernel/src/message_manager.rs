@@ -1,6 +1,4 @@
 use crate::process::Process;
-use crate::process_manager::{ProcessId, ProcessManager};
-use core::cell::RefCell;
 use util::linked_list::{LinkedList, ListItem};
 
 pub struct MessageManager<'a> {

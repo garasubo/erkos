@@ -1,5 +1,4 @@
 use crate::port::{Port, PortC, PinCfg};
-use core::marker::PhantomData;
 
 pub struct Pin<'a, P, const N: u8> {
     port: &'a Port<P>,
@@ -25,9 +24,7 @@ impl<'a, const N: u8> Pin<'a, PortC, N> {
     }
 
     pub fn in_(&self) -> bool {
-        unsafe {
-            (self.port.in_.read() & (1 << N)) > 0
-        }
+        (self.port.in_.read() & (1 << N)) > 0
     }
 
     pub fn pincfg(&self) -> &PinCfg {

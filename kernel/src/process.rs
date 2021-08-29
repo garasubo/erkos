@@ -1,5 +1,5 @@
 use core::slice::from_raw_parts_mut;
-use util::linked_list::{LinkedList, ListItem};
+use util::linked_list::LinkedList;
 
 #[derive(PartialEq)]
 pub enum ProcessState {
@@ -28,7 +28,7 @@ unsafe fn execute_process(mut sp: *mut u8, regs: &mut [u32; 8]) -> *mut u8 {
         mrs $0, psp
         "
         :"={r0}"(sp): "{r0}"(sp),"{r1}"(regs)
-        :"r4","r5","r6","r7","r8","r9","r10","r11":"volatile"
+        :"r4","r5","r6","r8","r9","r10","r11":"volatile"
     );
     sp
 }

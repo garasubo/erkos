@@ -6,7 +6,6 @@ use crate::scheduler::Scheduler;
 use crate::syscall_id;
 use arch::StackFrame;
 use core::cell::RefCell;
-use core::fmt::Write as CoreWrite;
 use core::slice::from_raw_parts;
 use embedded_hal::serial::Write;
 use log::dhprintln;
@@ -83,7 +82,7 @@ where
                                         unsafe { from_raw_parts(base_frame.r1 as *const u8, arg2) };
 
                                     for i in 0..arg2 {
-                                        serial.write(arg1[i] as char);
+                                        let _ = serial.write(arg1[i] as char);
                                     }
                                 }
                                 syscall_id::YIELD => {

@@ -1,5 +1,5 @@
 use crate::pin::Pin;
-use crate::port::{Port, PortC};
+use crate::port::PortC;
 
 pub struct Button<'a, P> {
     pin: &'a P

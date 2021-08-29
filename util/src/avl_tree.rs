@@ -132,9 +132,9 @@ pub struct IterMut<'a, K, V> {
 
 #[derive(Debug, PartialEq)]
 enum BalanceResult {
-    BALANCED,
-    LEFT_HEAVY,
-    RIGHT_HEAVY,
+    Balanced,
+    LeftHeavy,
+    RightHeavy,
 }
 
 // TODO: implement rotate
@@ -181,23 +181,23 @@ where
 
     fn check_balanced(&self) -> BalanceResult {
         if self.head.is_none() {
-            return BalanceResult::BALANCED;
+            return BalanceResult::Balanced;
         }
         let head = self.head.as_ref().unwrap();
         let left_height = head.left.as_ref().map(|n| n.height).unwrap_or(0);
         let right_height = head.right.as_ref().map(|n| n.height).unwrap_or(0);
         if left_height >= right_height + 2 {
-            BalanceResult::LEFT_HEAVY
+            BalanceResult::LeftHeavy
         } else if left_height + 2 <= right_height {
-            BalanceResult::RIGHT_HEAVY
+            BalanceResult::RightHeavy
         } else {
-            BalanceResult::BALANCED
+            BalanceResult::Balanced
         }
     }
 
     fn balance(&mut self) {
         match self.check_balanced() {
-            BalanceResult::LEFT_HEAVY => {
+            BalanceResult::LeftHeavy => {
                 let head = self.head.as_mut().unwrap();
                 let left = head.left.as_mut().unwrap();
                 let llh = left.left.as_ref().map(|n| n.height).unwrap_or(0);
@@ -207,7 +207,7 @@ where
                 }
                 head.rotate_right();
             }
-            BalanceResult::RIGHT_HEAVY => {
+            BalanceResult::RightHeavy => {
                 let head = self.head.as_mut().unwrap();
                 let right = head.right.as_mut().unwrap();
                 let rlh = right.left.as_ref().map(|n| n.height).unwrap_or(0);
@@ -526,7 +526,7 @@ mod tests {
             btree.insert(node);
             assert_eq!(
                 btree.check_balanced(),
-                BalanceResult::BALANCED,
+                BalanceResult::Balanced,
                 "not balanced when inserting {}",
                 i
             );
