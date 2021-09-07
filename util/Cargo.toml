@@ -8,4 +8,9 @@ edition = "2018"
 rand = "0.3"
 
 [dependencies]
-array-init = "0.0.4"
+array-init = "2.0"
+lock_api = { version = "0.4", features = ["nightly"] }
+
+[features]
+alloc = []
+

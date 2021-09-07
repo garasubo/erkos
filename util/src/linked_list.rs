@@ -1,6 +1,7 @@
 use core::ops::{Deref, DerefMut};
 use core::ptr::NonNull;
 
+#[repr(C)]
 pub struct ListItem<'a, T> {
     pub item: T,
     next: Option<&'a mut ListItem<'a, T>>,

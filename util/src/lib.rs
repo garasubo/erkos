@@ -1,9 +1,16 @@
 #![no_std]
 #![crate_type = "rlib"]
+#![feature(const_maybe_uninit_assume_init)]
 
 pub mod avl_tree;
 pub mod binary_tree;
 pub mod linked_list;
+#[cfg(feature = "alloc")]
+pub mod allocator;
+pub mod sync;
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
 
 // copied from https://github.com/tock/tock
 macro_rules! static_init {
