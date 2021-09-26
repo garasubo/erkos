@@ -1,5 +1,4 @@
-use core::cell::UnsafeCell;
-use lock_api::{RawMutex, Mutex, GuardSend};
+use lock_api::{RawMutex, GuardSend};
 
 pub struct RawUnsafeLock {}
 
@@ -21,5 +20,3 @@ unsafe impl RawMutex for RawUnsafeLock {
 
 pub type UnsafeLock<T> = lock_api::Mutex<RawUnsafeLock, T>;
 pub type UnsafeLockGuard<'a, T> = lock_api::MutexGuard<'a, RawUnsafeLock, T>;
-
-// LDREX
