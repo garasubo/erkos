@@ -16,21 +16,8 @@ pub struct Process<'a> {
     pub message_queue: LinkedList<'a, u32>,
 }
 
-unsafe fn execute_process(mut sp: *mut u8, regs: &mut [u32; 8]) -> *mut u8 {
-    llvm_asm!(
-        "
-        msr psp, $1
-        ldmia $2, {r4-r11}
-        cpsie i
-        svc 0
-        cpsid i
-        stmia $2, {r4-r11}
-        mrs $0, psp
-        "
-        :"={r0}"(sp): "{r0}"(sp),"{r1}"(regs)
-        :"r4","r5","r6","r8","r9","r10","r11":"volatile"
-    );
-    sp
+extern "C" {
+    fn asm_execute_process(sp: *mut u8, regs: &mut [u32; 8]) -> *mut u8;
 }
 
 impl<'a> Process<'a> {
@@ -54,6 +41,6 @@ impl<'a> Process<'a> {
     }
 
     pub fn execute(&mut self) {
-        self.sp = unsafe { execute_process(self.sp, self.regs) };
+        self.sp = unsafe { asm_execute_process(self.sp, self.regs) };
     }
 }
