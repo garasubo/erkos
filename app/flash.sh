@@ -1,3 +1,7 @@
+#!/bin/bash
+
+set -eux
+
 IMAGE=$(pwd)/../target/thumbv7em-none-eabihf/release/app
 
 cargo build --release

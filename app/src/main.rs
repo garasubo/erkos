@@ -42,7 +42,7 @@ pub fn main() -> ! {
     //let mut stdout = hstdout().unwrap();
     //write!(stdout, "Hello, world!").unwrap();
 
-    //let process = process_create!(app_main, 1024);
+    let process = process_create!(app_main, 1024);
     let tick_process = process_create!(tick, 1024);
     let button_process = process_create!(button_callback, 1024);
     let serial_process = process_create!(serial_func, 1024);
@@ -94,79 +94,13 @@ pub fn main() -> ! {
         gpiod.moder.write((0x2 << 16) | (0x2 << 18));
         gpiod.afrh.write(0x7 | (0x7 << 4));
     }
-    // For nic
-    unsafe {
-        // pa1, pa2, pa7
-        gpioa.moder.modify(|val| (val | 0b101000 | (0b10 << 14)));
-        // AF11
-        gpioa
-            .afrl
-            .modify(|val| (val | 0b0000_1011_1011_0000 | (0b1011 << 28)));
-        gpioa.ospeedr.modify(|val| val | 0b111100 | (0b11 << 14));
-        // pb13 (RMII TXD1)
-        gpiob.moder.modify(|val| val | (0b10 << 26));
-        // AF11 for pb13
-        gpiob.afrh.modify(|val| (val | (0b1011 << 20)));
-        gpiob.ospeedr.modify(|val| val | (0b11 << 26));
-        // pc1, 4, 5
-        gpioc.moder.modify(|val| val | (0b10_10_00_00_10_00));
-        // AF11 for pc1, 4, 5
-        gpioc
-            .afrl
-            .modify(|val| val | (0b1011_1011_0000_0000_1011 << 4));
-        gpioc.ospeedr.modify(|val| val | (0b11_11_00_00_11_00));
-        // pg11, pg13(RMII TX_EN, TXD0)
-        gpiog
-            .moder
-            .modify(|val| val | (0b10 << 22) | (0b10_10 << 26));
-        gpiog
-            .afrh
-            .modify(|val| val | (0b1011 << 12) | (0b1011_1011 << 20));
-        gpiog
-            .ospeedr
-            .modify(|val| val | (0b11 << 22) | (0b11 << 26));
-        registers.ahb1rstr.modify(|val| val | (1 << 25));
-        registers.ahb1rstr.modify(|val| val & !(1 << 25));
-    }
     let nvic = Nvic::new();
-    // serial.send_buffer("hello dma world\r\n".as_bytes());
-    let eth = Ethernet::new(0x4002_8000);
-    eth.init();
-    let mut ETH_TRANS_BUFF: [TxEntry; 2] = Default::default();
-    let mut ETH_RECV_BUFF: [RxEntry; 4] = Default::default();
-    let mut transmitter = EthernetTransmitter::new(&eth, unsafe { &mut ETH_TRANS_BUFF }, unsafe {
-        &mut ETH_RECV_BUFF
-    });
-    transmitter.init();
     for c in "hello world\n".chars() {
         serial.write(c).unwrap();
     }
-    let message = "say hello\n\r";
-    for _i in 0..10 {
-        transmitter
-            .send(message.as_bytes().len(), |buff| {
-                buff.copy_from_slice(message.as_bytes());
-            })
-            .unwrap_or_else(|_| {
-                for c in "error\r\n".chars() {
-                    serial.write(c).unwrap();
-                }
-            });
-        while transmitter.is_tx_running() {}
-    }
-    for _i in 0..10 {
-        transmitter
-            .send_buff(message.as_bytes())
-            .unwrap_or_else(|_| {
-                for c in "error\r\n".chars() {
-                    serial.write(c).unwrap();
-                }
-            });
-        while transmitter.is_tx_running() {}
-    }
     let mut scheduler = SimpleScheduler::new();
     let mut process_manager = ProcessManager::new();
-    //process_register!(scheduler, process_manager, process);
+    process_register!(scheduler, process_manager, process);
     process_register!(scheduler, process_manager, tick_process, tick_process_id);
     process_register!(scheduler, process_manager, serial_process);
     process_register!(scheduler, process_manager, button_process);
