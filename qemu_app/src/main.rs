@@ -1,6 +1,6 @@
 #![no_std]
 #![no_main]
-#![feature(llvm_asm)]
+#![feature(asm)]
 
 use arch::nvic::Nvic;
 use core::fmt::Write as _;
@@ -100,12 +100,13 @@ extern "C" fn app_main() -> ! {
     let length = message.bytes().len();
     dhprintln!("fib {}: {}", 5, fib(5));
     unsafe {
-        llvm_asm!(
-            "
-            mov r0, #1
-            svc 1
-            "
-        ::"{r1}"(message_ptr), "{r2}"(length)::"volatile");
+        asm!(
+            "mov r0, #1",
+            "svc 1",
+            out("r0") _,
+            in("r1") message_ptr,
+            in("r2") length
+        );
     }
     wait_for_event();
     dhprintln!("fib {}: {}", 8, fib(8));

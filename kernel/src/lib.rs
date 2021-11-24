@@ -1,6 +1,6 @@
 #![no_std]
 #![crate_type = "rlib"]
-#![feature(llvm_asm)]
+#![feature(asm)]
 
 pub mod interrupt_manager;
 pub mod kernel;

@@ -46,7 +46,7 @@ where
 
     pub fn run(&'a mut self) -> ! {
         unsafe {
-            llvm_asm!("cpsid i" ::: "memory" : "volatile");
+            asm!("cpsid i", options(nomem, nostack));
         }
         let interrupt_manager = &mut self.interrupt_manager;
         let process_manager = &mut self.process_manager;
@@ -134,11 +134,11 @@ where
                 None => {
                     dhprintln!("sleeping");
                     unsafe {
-                        llvm_asm!("
-                            cpsie i
-                            wfi
-                            cpsid i
-                        ":::"memory":"volatile");
+                        asm!(
+                            "cpsie i",
+                            "wfi",
+                            "cpsid i",
+                        );
                     }
                 }
             }
@@ -162,14 +162,12 @@ pub static mut SHOULD_DISPATCH: u32 = 0;
 
 #[no_mangle]
 pub unsafe extern "C" fn SysTick() {
-    llvm_asm!(
-        "
-        movw lr, #0xfff9
-        movt lr, #0xffff
-      from_kernel:
-        ldr r0, =SHOULD_DISPATCH
-        mov r1, #1
-        str r1, [r0, #0]
-        "
-    ::::"volatile");
+    asm!(
+        "movw lr, #0xfff9",
+        "movt lr, #0xffff",
+        "ldr r0, =SHOULD_DISPATCH",
+        "mov r1, #1",
+        "str r1, [r0, #0]",
+        options(nostack),
+    );
 }

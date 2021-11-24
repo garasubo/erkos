@@ -1,6 +1,5 @@
 #![no_std]
 #![no_main]
-#![feature(llvm_asm)]
 
 use arch::nvic::Nvic;
 use arch::systick::Systick;

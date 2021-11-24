@@ -4,7 +4,7 @@
 #![cfg_attr(test, no_main)]
 #![no_std]
 #![no_main]
-#![feature(llvm_asm)]
+#![feature(asm)]
 
 use arch::nvic::Nvic;
 use arch::systick::Systick;
@@ -125,7 +125,7 @@ pub fn main() -> ! {
     );
     unsafe {
         let sp: u32;
-        llvm_asm!("mov $0, sp":"=r"(sp):::"volatile");
+        asm!("mov {0}, sp", out(reg) sp);
         dhprintln!("sp: {:x}", sp);
     }
     kernel.run();
@@ -135,12 +135,11 @@ pub unsafe extern "C" fn app_main(_r0: usize, _r1: usize, _r2: usize) -> ! {
     let message: &str = "app_main";
     print_str(message);
     loop {
-        llvm_asm!(
-            "
-            mov r0, #5
-            svc 1
-            "
-        :::"r0":"volatile");
+        asm!(
+            "mov r0, #5",
+            "svc 1",
+            out("r0") _,
+        );
     }
 }
 

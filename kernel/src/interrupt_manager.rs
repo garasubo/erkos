@@ -77,25 +77,18 @@ impl<'a> InterruptManager<'a> {
 }
 
 pub unsafe extern "C" fn DefaultIrqHandler() {
-    llvm_asm!(
-        "
-        movw lr, #0xfff9
-        movt lr, #0xffff
-      from_kernel:
-        mrs r0, IPSR
-        and r0, #0xff
-        sub r0, #16
-
-        lsrs r1, r0, #5
-
-        movs r3, #1
-        and r0, r0, #31
-        lsl r0, r3, r0
-
-        mov r2, #0xe180
-        movt r2, #0xe000
-
-        str r0, [r2, r1, lsl #2]
-        "
-    ::::"volatile");
+    asm!(
+        "movw lr, #0xfff9",
+        "movt lr, #0xffff",
+        "mrs r0, IPSR",
+        "and r0, #0xff",
+        "sub r0, #16",
+        "lsrs r1, r0, #5",
+        "movs r3, #1",
+        "and r0, r0, #31",
+        "lsl r0, r3, r0",
+        "mov r2, #0xe180",
+        "movt r2, #0xe000",
+        "str r0, [r2, r1, lsl #2]",
+    );
 }

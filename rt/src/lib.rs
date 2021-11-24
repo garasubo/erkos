@@ -2,7 +2,7 @@
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 #![no_std]
-#![feature(llvm_asm)]
+#![feature(asm)]
 
 use core::panic::PanicInfo;
 use core::ptr;
@@ -133,26 +133,22 @@ pub static mut SYSCALL_FIRED: usize = 0;
 
 #[no_mangle]
 pub unsafe extern "C" fn SVCall() {
-    llvm_asm!(
-        "
-        cmp lr, #0xfffffff9
-        bne to_kernel
-
+    asm!(
+        "cmp lr, #0xfffffff9",
+        "bne 1f",
         /* switch thread mode to unprivileged */
-        movw lr, #0xfffd
-        movt lr, #0xffff
-        bx lr
-    
-      to_kernel:
-        ldr r0, =SYSCALL_FIRED
-        mov r1, #1
-        str r1, [r0, #0]
+        "movw lr, #0xfffd",
+        "movt lr, #0xffff",
+        "bx lr",
+        "1:",
+        "ldr r0, =SYSCALL_FIRED",
+        "mov r1, #1",
+        "str r1, [r0, #0]",
 
-        movw lr, #0xfff9
-        movt lr, #0xffff
-        bx lr
-        "
-    ::::"volatile");
+        "movw lr, #0xfff9",
+        "movt lr, #0xffff",
+        "bx lr",
+    );
 }
 
 pub fn test_runner(tests: &[&dyn Fn()]) {
