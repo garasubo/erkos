@@ -3,6 +3,7 @@
 #![reexport_test_harness_main = "test_main"]
 #![no_std]
 #![feature(asm)]
+#![feature(naked_functions)]
 
 use core::panic::PanicInfo;
 use core::ptr;
@@ -132,6 +133,7 @@ pub extern "C" fn DefaultExceptionHandler() {
 pub static mut SYSCALL_FIRED: usize = 0;
 
 #[no_mangle]
+#[naked]
 pub unsafe extern "C" fn SVCall() {
     asm!(
         "cmp lr, #0xfffffff9",
@@ -148,6 +150,7 @@ pub unsafe extern "C" fn SVCall() {
         "movw lr, #0xfff9",
         "movt lr, #0xffff",
         "bx lr",
+        options(noreturn),
     );
 }
 
